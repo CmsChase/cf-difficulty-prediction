@@ -1,0 +1,16 @@
+| metric | value |
+| --- | --- |
+| Rated programming problems | 10979 |
+| Rating range | 800–3500 |
+| Unique contests | 1948 |
+| Feature columns | 46 |
+| Tag one-hot columns | 37 |
+| Solved count p50 | 4167 |
+| Solved count p75 | 13659.5 |
+| Solved count p90 | 25146.8 |
+| Solved count p95 | 33251.6 |
+| Solved count p99 | 73912.26 |
+| Solved count max | 700377 |
+| Contest-grouped contest overlap | 0 |
+| Forward-time strictly ordered | True |
+| Most frequent tags | greedy (3485), math (3406), implementation (2987), dp (2476), constructive algorithms (2062) |

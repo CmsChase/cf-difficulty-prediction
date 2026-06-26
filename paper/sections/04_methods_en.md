@@ -1,0 +1,3 @@
+# Methods
+
+The feature table preserves problem identifiers, official rating as the target, contest start time, index-derived features, point metadata, solved-count features, and one-hot tag indicators. Evaluation uses two complementary strategies. The contest-grouped split prevents contest leakage by assigning every contest to only one partition. The forward-time split orders contests chronologically to test temporal generalization. The model set includes simple baselines, ridge regression, random forest, and histogram gradient boosting in the baseline stage. The ablation stage evaluates ridge regression and histogram gradient boosting across predefined feature groups.

@@ -1,0 +1,10 @@
+| strategy | best_full_model | comparison_model | best_full_model_MAE | comparison_model_MAE | absolute_MAE_improvement | percent_MAE_improvement |
+| --- | --- | --- | --- | --- | --- | --- |
+| contest_grouped | hist_gradient_boosting_regressor | index_only_baseline | 166.895 | 409.237 | 242.343 | 59.218 |
+| contest_grouped | hist_gradient_boosting_regressor | mean_baseline | 166.895 | 606.539 | 439.644 | 72.484 |
+| contest_grouped | hist_gradient_boosting_regressor | solved_count_only_baseline | 166.895 | 274.407 | 107.513 | 39.18 |
+| contest_grouped | hist_gradient_boosting_regressor | tag_only_baseline | 166.895 | 482.902 | 316.008 | 65.439 |
+| forward_time | random_forest_regressor | index_only_baseline | 152.541 | 461.229 | 308.688 | 66.927 |
+| forward_time | random_forest_regressor | mean_baseline | 152.541 | 697.783 | 545.243 | 78.139 |
+| forward_time | random_forest_regressor | solved_count_only_baseline | 152.541 | 227.237 | 74.696 | 32.871 |
+| forward_time | random_forest_regressor | tag_only_baseline | 152.541 | 579.042 | 426.501 | 73.656 |

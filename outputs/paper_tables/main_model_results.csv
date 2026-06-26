@@ -1,0 +1,15 @@
+strategy,model_name,MAE,RMSE,R2,within_100,within_200,rank_by_MAE
+contest_grouped,hist_gradient_boosting_regressor,166.894671,229.07775,0.900948,0.428399,0.696677,1
+contest_grouped,random_forest_regressor,176.011543,246.804917,0.885025,0.416918,0.669486,2
+contest_grouped,ridge_regression,189.513484,249.346362,0.882645,0.336556,0.629607,3
+contest_grouped,solved_count_only_baseline,274.407487,357.584128,0.758647,0.212689,0.439275,4
+contest_grouped,index_only_baseline,409.237225,519.775696,0.49005,0.143202,0.283384,5
+contest_grouped,tag_only_baseline,482.90247,607.43247,0.303548,0.132931,0.261631,6
+contest_grouped,mean_baseline,606.539068,728.381678,-0.001413,0.100302,0.192749,7
+forward_time,random_forest_regressor,152.540918,195.789797,0.942964,0.432836,0.71162,1
+forward_time,hist_gradient_boosting_regressor,152.781757,193.765087,0.944138,0.390725,0.712687,2
+forward_time,ridge_regression,179.804254,226.893424,0.923403,0.327292,0.638593,3
+forward_time,solved_count_only_baseline,227.236594,281.787576,0.881857,0.234542,0.494136,4
+forward_time,index_only_baseline,461.22923,550.356564,0.549334,0.085821,0.179638,5
+forward_time,tag_only_baseline,579.041548,700.91271,0.26904,0.088486,0.192431,6
+forward_time,mean_baseline,697.783448,819.817522,-1e-06,0.084755,0.159915,7

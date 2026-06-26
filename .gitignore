@@ -1,0 +1,27 @@
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.venv/
+venv/
+
+# Large/generated data
+data/raw/
+data/interim/
+data/processed/
+
+# Model artifacts and logs
+outputs/baselines/models/
+outputs/baselines/predictions/
+outputs/logs/
+*.pkl
+
+# Local/system files
+.DS_Store
+Thumbs.db
+*.tmp
+
+# Generated experiment outputs
+outputs/*
+!outputs/paper_tables/
+!outputs/paper_tables/**

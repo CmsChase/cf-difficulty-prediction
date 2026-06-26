@@ -1,0 +1,9 @@
+strategy,best_full_model,comparison_model,best_full_model_MAE,comparison_model_MAE,absolute_MAE_improvement,percent_MAE_improvement
+contest_grouped,hist_gradient_boosting_regressor,index_only_baseline,166.894671,409.237225,242.342554,59.218111
+contest_grouped,hist_gradient_boosting_regressor,mean_baseline,166.894671,606.539068,439.644397,72.484102
+contest_grouped,hist_gradient_boosting_regressor,solved_count_only_baseline,166.894671,274.407487,107.512816,39.179986
+contest_grouped,hist_gradient_boosting_regressor,tag_only_baseline,166.894671,482.90247,316.007799,65.439259
+forward_time,random_forest_regressor,index_only_baseline,152.540918,461.22923,308.688312,66.927309
+forward_time,random_forest_regressor,mean_baseline,152.540918,697.783448,545.24253,78.139218
+forward_time,random_forest_regressor,solved_count_only_baseline,152.540918,227.236594,74.695676,32.871324
+forward_time,random_forest_regressor,tag_only_baseline,152.540918,579.041548,426.50063,73.656309

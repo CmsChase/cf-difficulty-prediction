@@ -1,0 +1,21 @@
+strategy,model_name,tag,count,mean_abs_error
+contest_grouped,hist_gradient_boosting_regressor,*special,41,239.015763
+contest_grouped,hist_gradient_boosting_regressor,geometry,54,188.88669
+contest_grouped,hist_gradient_boosting_regressor,dfs and similar,166,184.508644
+contest_grouped,hist_gradient_boosting_regressor,trees,169,183.663614
+contest_grouped,hist_gradient_boosting_regressor,probabilities,40,178.456045
+contest_grouped,hist_gradient_boosting_regressor,graphs,190,175.955587
+contest_grouped,hist_gradient_boosting_regressor,shortest paths,52,173.508516
+contest_grouped,hist_gradient_boosting_regressor,binary search,191,167.204206
+contest_grouped,hist_gradient_boosting_regressor,interactive,44,164.805039
+contest_grouped,hist_gradient_boosting_regressor,games,47,164.617527
+forward_time,random_forest_regressor,*special,36,213.04219
+forward_time,random_forest_regressor,probabilities,44,169.872128
+forward_time,random_forest_regressor,games,91,163.087281
+forward_time,random_forest_regressor,interactive,86,158.51457
+forward_time,random_forest_regressor,dsu,75,157.940472
+forward_time,random_forest_regressor,divide and conquer,88,157.328099
+forward_time,random_forest_regressor,trees,193,156.199561
+forward_time,random_forest_regressor,number theory,189,155.333548
+forward_time,random_forest_regressor,two pointers,139,152.435453
+forward_time,random_forest_regressor,graphs,202,150.755807

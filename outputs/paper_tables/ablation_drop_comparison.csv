@@ -1,0 +1,17 @@
+strategy,model_name,removed_group,full_feature_set,ablated_feature_set,all_api_features_MAE,ablated_MAE,MAE_difference,percent_MAE_change
+contest_grouped,hist_gradient_boosting_regressor,index,all_api_features,all_without_index,167.473784,176.40875,8.934966,5.335143
+contest_grouped,hist_gradient_boosting_regressor,points,all_api_features,all_without_points,167.473784,176.436179,8.962395,5.351521
+contest_grouped,hist_gradient_boosting_regressor,solved,all_api_features,all_without_solved,167.473784,317.524488,150.050704,89.596533
+contest_grouped,hist_gradient_boosting_regressor,tags,all_api_features,all_without_tags,167.473784,198.742474,31.26869,18.670797
+contest_grouped,ridge_regression,index,all_api_features,all_without_index,189.513484,201.081839,11.568355,6.104238
+contest_grouped,ridge_regression,points,all_api_features,all_without_points,189.513484,197.082762,7.569278,3.994058
+contest_grouped,ridge_regression,solved,all_api_features,all_without_solved,189.513484,340.544166,151.030682,79.693898
+contest_grouped,ridge_regression,tags,all_api_features,all_without_tags,189.513484,213.569889,24.056405,12.69377
+forward_time,hist_gradient_boosting_regressor,index,all_api_features,all_without_index,153.016985,161.533214,8.516229,5.565545
+forward_time,hist_gradient_boosting_regressor,points,all_api_features,all_without_points,153.016985,171.247568,18.230583,11.914091
+forward_time,hist_gradient_boosting_regressor,solved,all_api_features,all_without_solved,153.016985,331.616279,178.599294,116.718607
+forward_time,hist_gradient_boosting_regressor,tags,all_api_features,all_without_tags,153.016985,168.684583,15.667598,10.239123
+forward_time,ridge_regression,index,all_api_features,all_without_index,179.804254,195.395181,15.590927,8.671056
+forward_time,ridge_regression,points,all_api_features,all_without_points,179.804254,193.276999,13.472745,7.493007
+forward_time,ridge_regression,solved,all_api_features,all_without_solved,179.804254,365.267015,185.462761,103.147037
+forward_time,ridge_regression,tags,all_api_features,all_without_tags,179.804254,183.366513,3.562259,1.981187
