@@ -2,6 +2,41 @@
 
 A reproducible machine-learning study of Codeforces problem difficulty prediction using public API metadata, solved-count behavior, cold-start evaluation, exposure-aware analysis, and rolling temporal validation.
 
+<!-- project-showcase-start -->
+## Project Snapshot
+
+| Experiment | Main setting | Best / key result | Interpretation |
+|---|---|---:|---|
+| Contest-grouped prediction | HGB full API | MAE 166.9, within ?200 = 69.7% | Generalizes to unseen contests |
+| Forward-time prediction | RF full API | MAE 152.5, within ?200 = 71.2% | Tests chronological generalization |
+| Solved-only baseline | solved-count only | MAE 227?274 | Solved behavior is the strongest simple public signal |
+| Cold-start prediction | metadata only | MAE 318?332 | New-problem prediction is much harder |
+| Rolling temporal validation | full API + age norm | average MAE 146.0 | Best across rolling chronological folds |
+
+## Key Figures
+
+![Test MAE by model](paper/figures/test_mae_by_model.png)
+
+![Feature drop MAE change](paper/figures/feature_drop_mae_change.png)
+
+![Rolling-window MAE](paper/figures/rolling_window_mae.png)
+
+## Project Overview
+
+**Problem.** Can Codeforces problem difficulty be predicted from public API metadata and solved-count behavior?
+
+**Dataset.** The final modeling table contains 10,979 rated Codeforces programming problems from 1,948 contests.
+
+**Method.** The project uses a reproducible Python pipeline covering API data collection, preprocessing, feature engineering, grouped and temporal evaluation, baseline models, ablations, robustness experiments, exposure-aware analysis, and rolling-window temporal validation.
+
+**Key finding.** Solved-count behavior is the strongest simple public signal, but it is not a pure difficulty measure. Cold-start prediction remains much harder, and exposure-aware features help most when combined with full API metadata.
+
+**Limitation.** Full API prediction uses post-publication solved statistics. Age-normalized features are simple exposure proxies, not full solve-curve models.
+
+**Why it matters.** The project separates post-publication prediction from cold-start prediction and shows how difficulty, exposure, popularity, and time interact in competitive-programming data.
+<!-- project-showcase-end -->
+
+
 ## Research question
 
 Can Codeforces official problem ratings be predicted from public structured data without scraping problem statements or using private user histories?
