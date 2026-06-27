@@ -1,6 +1,6 @@
 # Codeforces Difficulty Prediction
 
-A reproducible machine-learning research project for predicting Codeforces problem difficulty from public API metadata and solved-statistics signals.
+A reproducible machine-learning study of Codeforces problem difficulty prediction using public API metadata, solved-count behavior, cold-start evaluation, exposure-aware analysis, and rolling temporal validation.
 
 ## Research question
 
@@ -57,13 +57,17 @@ python -m cf_diff.robustness --config configs/experiment.yaml --processed-path d
 python -m pytest -q
 ```
 
-Current tested state: `49 passed`.
+Current tested state: `61 passed`.
 
 ## Paper
 
-The main paper is available as Word/PDF in the final package. The paper distinguishes post-publication prediction from cold-start prediction and treats age-normalized solved count as a partial exposure adjustment, not as a complete debiasing method.
+The final v4 English paper is available under `paper/`.
 
+Main files:
+- `paper/paper_v4_full_en.md`
+- `paper/paper_v4_full_en_final.pdf`
 
+The v4 paper extends the earlier robustness version by adding exposure-aware analysis and rolling-window temporal validation. It distinguishes post-publication prediction from cold-start prediction, treats age-normalized solved count as a partial exposure proxy, and uses rolling temporal validation to test whether results remain stable across chronological folds.
 ## Exposure-Aware Extension
 
 This branch adds an exposure-aware analysis of solved-count signals. The main project shows that public solved-count features are highly predictive for Codeforces rating, but solved count is not a pure difficulty signal. It can also reflect problem age, platform exposure, contest popularity, archival reuse, and participant behavior.
