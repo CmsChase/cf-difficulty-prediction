@@ -7,10 +7,10 @@ A reproducible machine-learning study of Codeforces problem difficulty predictio
 
 | Experiment | Main setting | Best / key result | Interpretation |
 |---|---|---:|---|
-| Contest-grouped prediction | HGB full API | MAE 166.9, within ?200 = 69.7% | Generalizes to unseen contests |
-| Forward-time prediction | RF full API | MAE 152.5, within ?200 = 71.2% | Tests chronological generalization |
-| Solved-only baseline | solved-count only | MAE 227?274 | Solved behavior is the strongest simple public signal |
-| Cold-start prediction | metadata only | MAE 318?332 | New-problem prediction is much harder |
+| Contest-grouped prediction | HGB full API | MAE 166.9, within ±200 = 69.7% | Generalizes to unseen contests |
+| Forward-time prediction | RF full API | MAE 152.5, within ±200 = 71.2% | Tests chronological generalization |
+| Solved-only baseline | solved-count only | MAE 227-274 | Solved behavior is the strongest simple public signal |
+| Cold-start prediction | metadata only | MAE 318-332 | New-problem prediction is much harder |
 | Rolling temporal validation | full API + age norm | average MAE 146.0 | Best across rolling chronological folds |
 
 ## Key Figures
