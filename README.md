@@ -128,7 +128,7 @@ The raw cached HTML files and generated output files are local reproducibility a
 
 ## Research question
 
-Can Codeforces official problem ratings be predicted from public structured data without scraping problem statements or using private user histories?
+Can Codeforces official problem ratings be predicted from public platform signals, and how much do metadata, solved statistics, and lightweight statement-structure features contribute under post-publication and cold-start settings?
 
 ## Main findings
 
