@@ -36,6 +36,18 @@ A reproducible machine-learning study of Codeforces problem difficulty predictio
 **Why it matters.** The project separates post-publication prediction from cold-start prediction and shows how difficulty, exposure, popularity, and time interact in competitive-programming data.
 <!-- project-showcase-end -->
 
+## Research Question
+
+How well can Codeforces problem difficulty be predicted across post-publication and cold-start settings using public metadata, solved-count statistics, and lightweight problem-statement structure features?
+
+This project separates two prediction scenarios:
+
+- **Post-publication prediction:** solved-count statistics are available after a problem has been published and attempted by users.
+- **Cold-start prediction:** solved-count statistics are unavailable, so the model must rely on metadata and problem-statement structure features.
+
+The main goal is not only to maximize prediction accuracy, but also to understand how different information sources contribute to difficulty prediction and where solved-count-based models fail under realistic cold-start conditions.
+
+
 <!-- v5-statement-cold-start-start -->
 ## v5 Statement Text-Light Cold-Start Results
 
@@ -61,6 +73,57 @@ Statement feature coverage:
 - 99.3% statement feature coverage
 - missing-statement rows handled by imputation
 <!-- v5-statement-cold-start-end -->
+
+## Reproducing the v5 Statement Text-Light Extension
+
+The v5 extension adds lightweight problem-statement structure features for cold-start difficulty prediction.
+
+### 1. Extract statement text-light features
+
+```powershell
+python -m cf_diff.statement_features `
+  --feature-path data/processed/features/model_table.parquet `
+  --cache-dir data/raw/codeforces/problem_pages `
+  --output-dir data/processed/statement_features `
+  --sleep-seconds 2.5 `
+  --timeout 30 `
+  --log-path outputs/logs/statement_features.log
+```
+
+For a small smoke test:
+
+```powershell
+python -m cf_diff.statement_features `
+  --feature-path data/processed/features/model_table.parquet `
+  --cache-dir data/raw/codeforces/problem_pages `
+  --output-dir data/processed/statement_features `
+  --sleep-seconds 2.5 `
+  --timeout 30 `
+  --max-pages 200 `
+  --log-path outputs/logs/statement_features.log
+```
+
+### 2. Run statement cold-start experiments
+
+```powershell
+python -m cf_diff.statement_cold_start `
+  --feature-path data/processed/features/model_table.parquet `
+  --statement-feature-path data/processed/statement_features/statement_features.parquet `
+  --output-dir outputs/statement_cold_start `
+  --log-path outputs/logs/statement_cold_start.log
+```
+
+### 3. Run tests
+
+```powershell
+$env:PYTHONPATH = "src"
+python -m pytest -q
+```
+
+Current tested state: `79 passed`.
+
+The raw cached HTML files and generated output files are local reproducibility artifacts and are not committed to the repository.
+
 
 
 ## Research question
