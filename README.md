@@ -36,6 +36,32 @@ A reproducible machine-learning study of Codeforces problem difficulty predictio
 **Why it matters.** The project separates post-publication prediction from cold-start prediction and shows how difficulty, exposure, popularity, and time interact in competitive-programming data.
 <!-- project-showcase-end -->
 
+<!-- v5-statement-cold-start-start -->
+## v5 Statement Text-Light Cold-Start Results
+
+This extension tests whether lightweight problem-statement structure features can improve cold-start Codeforces difficulty prediction beyond API metadata alone.
+
+| Split | Setting | Best model | MAE | Within ?200 | Interpretation |
+|---|---|---|---:|---:|---|
+| Contest-grouped | metadata only | HGB | 317.1 | 40.1% | Cold-start API metadata baseline |
+| Contest-grouped | metadata + text-light | HGB | 284.0 | 46.2% | +33.0 MAE improvement |
+| Forward-time | metadata only | HGB | 331.4 | 34.3% | Chronological cold-start baseline |
+| Forward-time | metadata + text-light | HGB | 289.1 | 42.6% | +42.3 MAE improvement |
+
+Key result: text-light features alone are weak, but they add useful complementary signal when combined with metadata. The strongest v5 conclusion is that lightweight statement-structure features improve cold-start prediction beyond API metadata alone.
+
+![Statement cold-start MAE comparison](paper/figures/statement_cold_start_mae_comparison.png)
+
+![Statement feature coverage](paper/figures/statement_feature_coverage.png)
+
+Statement feature coverage:
+- 10,979 model-table rows
+- 10,906 parsed statement pages
+- 73 missing-statement rows
+- 99.3% statement feature coverage
+- missing-statement rows handled by imputation
+<!-- v5-statement-cold-start-end -->
+
 
 ## Research question
 
@@ -92,7 +118,7 @@ python -m cf_diff.robustness --config configs/experiment.yaml --processed-path d
 python -m pytest -q
 ```
 
-Current tested state: `61 passed`.
+Current tested state: `79 passed`.
 
 ## Paper
 
