@@ -53,7 +53,7 @@ The main goal is not only to maximize prediction accuracy, but also to understan
 
 This extension tests whether lightweight problem-statement structure features can improve cold-start Codeforces difficulty prediction beyond API metadata alone.
 
-| Split | Setting | Best model | MAE | Within ?200 | Interpretation |
+| Split | Setting | Best model | MAE | Within ±200 | Interpretation |
 |---|---|---|---:|---:|---|
 | Contest-grouped | metadata only | HGB | 317.1 | 40.1% | Cold-start API metadata baseline |
 | Contest-grouped | metadata + text-light | HGB | 284.0 | 46.2% | +33.0 MAE improvement |
