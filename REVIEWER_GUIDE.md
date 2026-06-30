@@ -80,6 +80,7 @@ Final paper artifacts:
 
 ## Limitations
 
+- Current cold-start is metadata cold-start, not strict pre-contest cold-start.
 - Codeforces ratings are treated as labels, not as perfect ground truth.
 - Solved counts are predictive but confounded by exposure and time.
 - Age-normalized features are simple proxies, not full solve-curve models.
