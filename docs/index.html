@@ -1,0 +1,316 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Codeforces Difficulty Prediction</title>
+    <meta
+      name="description"
+      content="A reproducible ML study of Codeforces post-publication and cold-start problem difficulty prediction."
+    />
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body>
+    <div class="page-glow" aria-hidden="true"></div>
+
+    <header class="site-header" id="top">
+      <nav class="nav" aria-label="Project navigation">
+        <a class="brand" href="#top" aria-label="Codeforces Difficulty Prediction home">
+          <span class="brand-mark"></span>
+          <span>CF Difficulty</span>
+        </a>
+        <div class="nav-links">
+          <a href="#results">Results</a>
+          <a href="#figures">Figures</a>
+          <a href="#demo">Demo</a>
+          <a href="#limitations">Limits</a>
+          <span class="nav-divider"></span>
+          <a href="../README.md">README</a>
+          <a class="nav-pill" href="../paper/paper_v5_full_en_final.pdf">Paper</a>
+        </div>
+      </nav>
+    </header>
+
+    <main>
+      <section class="hero">
+        <div class="hero-copy">
+          <p class="eyebrow">Completed v5 research release</p>
+          <h1>Codeforces Difficulty Prediction</h1>
+          <p class="subtitle">
+            A reproducible ML study of post-publication and cold-start problem
+            difficulty prediction.
+          </p>
+          <div class="button-row" aria-label="Primary project links">
+            <a class="button primary" href="https://github.com/CmsChase/cf-difficulty-prediction">
+              GitHub repository
+            </a>
+            <a class="button" href="../paper/paper_v5_full_en_final.pdf">v5 paper PDF</a>
+            <a class="button" href="../REVIEWER_GUIDE.md">Reviewer guide</a>
+            <a class="button" href="../README.md">README</a>
+          </div>
+        </div>
+
+        <aside class="research-window" aria-label="Research pipeline preview">
+          <div class="window-top">
+            <span class="dot"></span>
+            <span class="dot"></span>
+            <span class="dot"></span>
+            <span class="window-title">v5 evaluation console</span>
+          </div>
+          <div class="window-body">
+            <div class="sidebar">
+              <span class="sidebar-title">Signals</span>
+              <span class="side-item active">metadata</span>
+              <span class="side-item">solved stats</span>
+              <span class="side-item">text-light</span>
+              <span class="side-item">temporal splits</span>
+            </div>
+            <div class="issue-card">
+              <div class="issue-head">
+                <span>CFD-10979</span>
+                <span class="status">research complete</span>
+              </div>
+              <h2>Predict rating before the leaderboard tells the whole story.</h2>
+              <p>
+                Public API metadata, post-publication solved behavior, and v5
+                statement structure features are evaluated under grouped and
+                chronological splits.
+              </p>
+              <div class="mini-metrics">
+                <div>
+                  <strong>166.9</strong>
+                  <span>contest MAE</span>
+                </div>
+                <div>
+                  <strong>152.5</strong>
+                  <span>time MAE</span>
+                </div>
+                <div>
+                  <strong>99.3%</strong>
+                  <span>text coverage</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </aside>
+      </section>
+
+      <section class="question">
+        <p class="section-kicker">Research question</p>
+        <h2>
+          How well can Codeforces problem difficulty be predicted across
+          post-publication and cold-start settings using public metadata,
+          solved-count statistics, exposure-aware features, and lightweight
+          problem-statement structure features?
+        </h2>
+      </section>
+
+      <section class="dataset-strip" aria-label="Dataset summary">
+        <article>
+          <span class="stat">10,979</span>
+          <span>rated programming problems</span>
+        </article>
+        <article>
+          <span class="stat">1,948</span>
+          <span>contests</span>
+        </article>
+        <article>
+          <span class="stat">800–3500</span>
+          <span>rating range</span>
+        </article>
+        <article>
+          <span class="stat">API + pages</span>
+          <span>public Codeforces sources</span>
+        </article>
+      </section>
+
+      <section id="results" class="section">
+        <div class="section-heading">
+          <p class="section-kicker">Key results</p>
+          <h2>Post-publication is strong. Cold-start is the hard part.</h2>
+        </div>
+        <div class="result-grid">
+          <article class="result-card wide">
+            <p>Contest-grouped full API</p>
+            <strong>MAE 166.9</strong>
+            <span>within ±200 = 69.7%</span>
+          </article>
+          <article class="result-card wide">
+            <p>Forward-time full API</p>
+            <strong>MAE 152.5</strong>
+            <span>within ±200 = 71.2%</span>
+          </article>
+          <article class="result-card">
+            <p>Cold-start metadata only</p>
+            <strong>317.1 / 331.4</strong>
+            <span>MAE</span>
+          </article>
+          <article class="result-card">
+            <p>Metadata + text-light</p>
+            <strong>284.0 / 289.1</strong>
+            <span>MAE</span>
+          </article>
+          <article class="result-card accent">
+            <p>Statement text-light improvement</p>
+            <strong>33.0–42.3</strong>
+            <span>MAE</span>
+          </article>
+          <article class="result-card accent">
+            <p>Statement feature coverage</p>
+            <strong>99.3%</strong>
+            <span>10,906 / 10,979 parsed</span>
+          </article>
+        </div>
+      </section>
+
+      <section id="figures" class="section">
+        <div class="section-heading">
+          <p class="section-kicker">Figures</p>
+          <h2>Five views of the final v5 pipeline.</h2>
+        </div>
+        <div class="figure-wall">
+          <figure class="figure-large">
+            <img src="project_overview.png" alt="Project overview diagram" />
+            <figcaption>Pipeline from public Codeforces data to analysis and paper artifacts.</figcaption>
+          </figure>
+          <figure>
+            <img src="figures/test_mae_by_model.png" alt="Test MAE by model" />
+            <figcaption>Model comparison across saved evaluation strategies.</figcaption>
+          </figure>
+          <figure>
+            <img src="figures/feature_drop_mae_change.png" alt="Feature ablation MAE change" />
+            <figcaption>Ablation view of which signal groups matter most.</figcaption>
+          </figure>
+          <figure>
+            <img
+              src="figures/statement_cold_start_mae_comparison.png"
+              alt="Statement cold-start MAE comparison"
+            />
+            <figcaption>v5 statement text-light cold-start comparison.</figcaption>
+          </figure>
+          <figure>
+            <img src="figures/rolling_window_mae.png" alt="Rolling-window MAE" />
+            <figcaption>Rolling chronological validation for temporal robustness.</figcaption>
+          </figure>
+        </div>
+      </section>
+
+      <section class="section compare">
+        <div>
+          <p class="section-kicker">Interpretation</p>
+          <h2>Full API is not the same problem as cold-start.</h2>
+        </div>
+        <div class="compare-grid">
+          <article class="compare-card">
+            <span>01</span>
+            <h3>Post-publication</h3>
+            <p>
+              Full API uses solved-count statistics after problems have had time
+              to accumulate accepted submissions. It is powerful, but it also
+              reflects exposure, age, popularity, and participation.
+            </p>
+          </article>
+          <article class="compare-card">
+            <span>02</span>
+            <h3>Cold-start</h3>
+            <p>
+              Cold-start excludes solved-count behavior. This v5 site reports
+              metadata/statement cold-start, not strict pre-contest cold-start,
+              because official tags may not always be available before contests.
+            </p>
+          </article>
+        </div>
+      </section>
+
+      <section id="demo" class="section demo-section">
+        <div class="section-heading">
+          <p class="section-kicker">Browser demo</p>
+          <h2>Illustrative demo only — the full research models are run in the Python pipeline.</h2>
+        </div>
+        <div class="demo-shell">
+          <form class="demo-form" aria-label="Illustrative difficulty demo controls">
+            <label>
+              Contest index rank
+              <select id="indexRank">
+                <option value="A">A</option>
+                <option value="B">B</option>
+                <option value="C" selected>C</option>
+                <option value="D">D</option>
+                <option value="E">E</option>
+                <option value="F+">F+</option>
+              </select>
+            </label>
+            <label>
+              Tag family
+              <select id="tagFamily">
+                <option value="implementation">implementation</option>
+                <option value="math">math</option>
+                <option value="dp">dp</option>
+                <option value="graphs">graphs</option>
+                <option value="greedy" selected>greedy</option>
+                <option value="strings">strings</option>
+                <option value="interactive">interactive</option>
+                <option value="geometry">geometry</option>
+              </select>
+            </label>
+            <label>
+              Statement length
+              <select id="statementLength">
+                <option value="short">short</option>
+                <option value="medium" selected>medium</option>
+                <option value="long">long</option>
+              </select>
+            </label>
+            <label>
+              Solved-count available
+              <select id="solvedAvailable">
+                <option value="no" selected>no</option>
+                <option value="yes">yes</option>
+              </select>
+            </label>
+          </form>
+          <aside class="demo-output" aria-live="polite">
+            <p class="output-label">Predicted difficulty range</p>
+            <p id="difficultyRange" class="output-range">1500–1900</p>
+            <p id="scenarioType" class="scenario">Cold-start scenario</p>
+            <p id="demoExplanation">
+              Uses index rank, tag family, and statement length. Solved-count
+              behavior is not included.
+            </p>
+          </aside>
+        </div>
+      </section>
+
+      <section id="limitations" class="section limits-section">
+        <div class="section-heading">
+          <p class="section-kicker">Limitations</p>
+          <h2>Good numbers, conservative claims.</h2>
+        </div>
+        <ul class="limits">
+          <li>Solved count is not pure difficulty; it is shaped by exposure and time.</li>
+          <li>Statement text-light features are approximate HTML-derived structure features.</li>
+          <li>No deep NLP, semantic embeddings, or LLM-based statement understanding in v5.</li>
+          <li>The evaluation is Codeforces-only.</li>
+          <li>Cold-start prediction remains harder than post-publication prediction.</li>
+        </ul>
+      </section>
+
+      <section class="section links-section">
+        <p class="section-kicker">Links</p>
+        <div class="link-grid">
+          <a href="https://github.com/CmsChase/cf-difficulty-prediction">GitHub repo root</a>
+          <a href="../README.md">README.md</a>
+          <a href="../REVIEWER_GUIDE.md">REVIEWER_GUIDE.md</a>
+          <a href="../paper/paper_v5_full_en_final.pdf">paper_v5_full_en_final.pdf</a>
+          <a href="../paper/paper_v5_full_en.md">paper_v5_full_en.md</a>
+        </div>
+      </section>
+    </main>
+
+    <footer>
+      Static v5 project site. No model files are loaded in the browser.
+    </footer>
+
+    <script src="demo.js"></script>
+  </body>
+</html>
