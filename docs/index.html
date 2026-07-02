@@ -22,6 +22,7 @@
         <div class="nav-links">
           <a href="#results">Results</a>
           <a href="#figures">Figures</a>
+          <a href="#cli-demo">CLI</a>
           <a href="#demo">Demo</a>
           <a href="#limitations">Limits</a>
           <span class="nav-divider"></span>
@@ -222,10 +223,67 @@
         </div>
       </section>
 
+      <section id="cli-demo" class="section cli-demo-section">
+        <div class="section-heading">
+          <p class="section-kicker">Real local prediction demo</p>
+          <h2>Use the v5.1 CLI when you want actual local predictions.</h2>
+        </div>
+        <div class="cli-demo-grid">
+          <article class="cli-copy">
+            <p>
+              The browser demo below is illustrative. The real prediction demo is
+              the local CLI in <a href="../src/cf_diff/predict_demo.py">predict_demo.py</a>.
+              It loads processed project features, trains lightweight demo models
+              at runtime, and compares post-publication and cold-start prediction
+              settings without saving model artifacts.
+            </p>
+            <p>
+              The CLI supports known Codeforces problems by contest ID and index,
+              plus manual hypothetical problems. It is a demo/application layer,
+              not a new research experiment.
+            </p>
+            <div class="inline-links">
+              <a href="../src/cf_diff/predict_demo.py">CLI source</a>
+              <a href="../README.md">README</a>
+              <a href="../REVIEWER_GUIDE.md">Reviewer guide</a>
+            </div>
+          </article>
+          <div class="code-stack">
+            <article class="code-card">
+              <h3>Known problem demo</h3>
+              <pre><code>python -m cf_diff.predict_demo `
+  --feature-path data/processed/features/model_table.parquet `
+  --statement-feature-path data/processed/statement_features/statement_features.parquet `
+  --contest-id 1791 `
+  --index C</code></pre>
+            </article>
+            <article class="code-card">
+              <h3>Manual cold-start demo</h3>
+              <pre><code>python -m cf_diff.predict_demo `
+  --feature-path data/processed/features/model_table.parquet `
+  --statement-feature-path data/processed/statement_features/statement_features.parquet `
+  --manual `
+  --problem-index D `
+  --tags dp graphs shortest_paths `
+  --points 2000 `
+  --statement-char-len 2600 `
+  --statement-word-count 430 `
+  --sample-count 3 `
+  --time-limit-ms 2000 `
+  --memory-limit-mb 256</code></pre>
+            </article>
+          </div>
+        </div>
+      </section>
+
       <section id="demo" class="section demo-section">
         <div class="section-heading">
-          <p class="section-kicker">Browser demo</p>
-          <h2>Illustrative demo only — the full research models are run in the Python pipeline.</h2>
+          <p class="section-kicker">Illustrative browser demo only</p>
+          <h2>Heuristic sliders for intuition, not the trained research models.</h2>
+          <p class="section-note">
+            This browser demo is heuristic and does not run the trained research
+            models. For real local predictions, use the v5.1 CLI demo.
+          </p>
         </div>
         <div class="demo-shell">
           <form class="demo-form" aria-label="Illustrative difficulty demo controls">

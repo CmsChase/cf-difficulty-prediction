@@ -26,6 +26,9 @@ How well can Codeforces problem difficulty be predicted from:
   prediction.
 - v5 statement text-light experiments that test whether simple statement
   structure features improve cold-start prediction beyond API metadata alone.
+- A v5.1 local prediction demo CLI that demonstrates the same post-publication
+  and cold-start settings by training lightweight demo models at runtime. This
+  is an application/demo layer, not a new research result.
 
 ## Main results
 
@@ -71,6 +74,16 @@ python -m cf_diff.statement_cold_start `
   --statement-feature-path data/processed/statement_features/statement_features.parquet `
   --output-dir outputs/statement_cold_start `
   --log-path outputs/logs/statement_cold_start.log
+```
+
+Run a known-problem v5.1 prediction demo:
+
+```powershell
+python -m cf_diff.predict_demo `
+  --feature-path data/processed/features/model_table.parquet `
+  --statement-feature-path data/processed/statement_features/statement_features.parquet `
+  --contest-id 1791 `
+  --index C
 ```
 
 Final paper artifacts:

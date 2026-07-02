@@ -426,6 +426,12 @@ h1 {
   max-width: 980px;
 }
 
+.section-note {
+  color: var(--muted);
+  margin: 0.9rem 0 0;
+  max-width: 760px;
+}
+
 .section-heading h2,
 .compare h2 {
   font-size: clamp(2rem, 3.6vw, 4rem);
@@ -554,6 +560,81 @@ figcaption {
   color: var(--muted);
 }
 
+.cli-demo-grid {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: 0.82fr 1.18fr;
+}
+
+.cli-copy,
+.code-card {
+  background: rgba(255, 255, 255, 0.045);
+  border: 1px solid var(--line);
+  border-radius: 24px;
+}
+
+.cli-copy {
+  color: var(--muted);
+  padding: 1.35rem;
+}
+
+.cli-copy a {
+  color: #ffffff;
+  font-weight: 760;
+  text-decoration: underline;
+  text-decoration-color: rgba(255, 255, 255, 0.28);
+  text-underline-offset: 0.22em;
+}
+
+.inline-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.65rem;
+  margin-top: 1.2rem;
+}
+
+.inline-links a {
+  background: rgba(255, 255, 255, 0.075);
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  color: #f8fafc;
+  font-weight: 760;
+  padding: 0.62rem 0.8rem;
+  text-decoration: none;
+}
+
+.code-stack {
+  display: grid;
+  gap: 1rem;
+}
+
+.code-card {
+  overflow: hidden;
+}
+
+.code-card h3 {
+  border-bottom: 1px solid var(--line);
+  color: #f8fafc;
+  font-size: 0.95rem;
+  letter-spacing: -0.01em;
+  margin: 0;
+  padding: 0.95rem 1rem;
+}
+
+pre {
+  margin: 0;
+  overflow-x: auto;
+  padding: 1rem;
+}
+
+code {
+  color: #d1d5db;
+  font-family:
+    "Cascadia Code", "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+  font-size: 0.88rem;
+  line-height: 1.65;
+}
+
 .demo-shell {
   display: grid;
   grid-template-columns: 1fr 0.78fr;
@@ -662,6 +743,7 @@ footer {
   .hero,
   .compare,
   .demo-shell,
+  .cli-demo-grid,
   .section-heading {
     grid-template-columns: 1fr;
   }

@@ -133,13 +133,72 @@ The extractor resumes from cached pages, so closing and restarting the process
 does not discard already downloaded problem pages. The raw HTML cache and
 generated statement feature outputs remain local artifacts.
 
+## v5.1 Prediction Demo CLI
+
+The v5.1 prediction demo is a real local CLI demo, not search/retrieval and not
+the browser-side heuristic on the website. It trains lightweight demo models at
+runtime from `data/processed/features/model_table.parquet`, compares the
+project's prediction settings, and does not save model artifacts.
+
+The CLI supports:
+
+- known-problem mode by Codeforces contest ID and problem index;
+- manual hypothetical problem mode;
+- post-publication reference prediction with solved-count behavior;
+- cold-start metadata prediction without solved-count behavior;
+- cold-start metadata + statement text-light prediction when statement features
+  are available.
+
+Prediction ranges are estimated from validation residuals from a deterministic
+held-out split of the training rows. This demo is not the official Codeforces
+rating system and does not introduce new research results.
+
+Known problem demo:
+
+```powershell
+python -m cf_diff.predict_demo `
+  --feature-path data/processed/features/model_table.parquet `
+  --statement-feature-path data/processed/statement_features/statement_features.parquet `
+  --contest-id 1791 `
+  --index C
+```
+
+Manual cold-start demo:
+
+```powershell
+python -m cf_diff.predict_demo `
+  --feature-path data/processed/features/model_table.parquet `
+  --statement-feature-path data/processed/statement_features/statement_features.parquet `
+  --manual `
+  --problem-index D `
+  --tags dp graphs shortest_paths `
+  --points 2000 `
+  --statement-char-len 2600 `
+  --statement-word-count 430 `
+  --sample-count 3 `
+  --time-limit-ms 2000 `
+  --memory-limit-mb 256
+```
+
+Manual post-publication demo:
+
+```powershell
+python -m cf_diff.predict_demo `
+  --feature-path data/processed/features/model_table.parquet `
+  --manual `
+  --problem-index C `
+  --tags math binary_search `
+  --points 1500 `
+  --solved-count 4200
+```
+
 ## Tests
 
 ```powershell
 python -m pytest -q
 ```
 
-Current tested state: `79 passed`.
+Current tested state: `91 passed`.
 
 ## Notes on interpretation
 
