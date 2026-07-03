@@ -192,13 +192,48 @@ python -m cf_diff.predict_demo `
   --solved-count 4200
 ```
 
+## v6 Semantic TF-IDF Extension
+
+v6 is a separate semantic statement-text extension on top of the completed v5
+research project. It extends cold-start prediction with classical TF-IDF
+features extracted from normalized Codeforces problem-statement text.
+
+This is not BERT, transformers, embeddings, LLMs, or deep semantic
+understanding. It is a lightweight bag-of-words semantic baseline designed to
+test whether statement text adds signal beyond metadata and v5 text-light
+structure features.
+
+Standalone v6 paper artifacts:
+
+- [`paper/paper_v6_semantic_tfidf.md`](paper/paper_v6_semantic_tfidf.md)
+- [`paper/paper_v6_semantic_tfidf_final.pdf`](paper/paper_v6_semantic_tfidf_final.pdf)
+
+Main v6 findings:
+
+- TF-IDF alone is weak.
+- Metadata + TF-IDF improves over metadata only.
+- Metadata + text-light + TF-IDF improves over metadata + text-light.
+- The improvement is larger on forward-time validation than contest-grouped
+  validation.
+- v6 does not replace the canonical v5 full API benchmark; its
+  `full_api_reference` is a ridge-based internal comparison.
+
+Compact v6 results:
+
+- Contest-grouped: metadata_only MAE 340.5 -> metadata_plus_tfidf MAE 311.1.
+- Forward-time: metadata_only MAE 365.4 -> metadata_plus_tfidf MAE 325.4.
+- Contest-grouped: metadata_plus_text_light MAE 310.6 ->
+  metadata_plus_text_light_plus_tfidf MAE 298.5.
+- Forward-time: metadata_plus_text_light MAE 335.8 ->
+  metadata_plus_text_light_plus_tfidf MAE 316.2.
+
 ## Tests
 
 ```powershell
 python -m pytest -q
 ```
 
-Current tested state: `91 passed`.
+Current tested state: `119 passed`.
 
 ## Notes on interpretation
 
