@@ -8,17 +8,15 @@ lightweight statement-structure features.
 
 ![Project overview](docs/project_overview.png)
 
-## For reviewers
+## Quick overview
 
-Start with [`REVIEWER_GUIDE.md`](REVIEWER_GUIDE.md). It gives the project goal,
-research question, key contributions, main results, post-publication vs
-cold-start distinction, reproducibility commands, and limitations in about two
-minutes.
+If you only want the main idea, key results, and how to read the project quickly, see [QUICK_OVERVIEW.md](QUICK_OVERVIEW.md).
 
-Final v5 paper artifacts:
+> **Cold-start note:** Cold-start here means no solved-count behavior, not necessarily strict pre-contest prediction. Tags, metadata, and statement availability may not exactly match a real pre-contest setting.
 
-- [`paper/paper_v5_full_en.md`](paper/paper_v5_full_en.md)
-- [`paper/paper_v5_full_en_final.pdf`](paper/paper_v5_full_en_final.pdf)
+Useful companion notes:
+- [Data and artifact manifest](docs/data_manifest.md)
+- [Error analysis](docs/error_analysis.md)
 
 ## Project snapshot
 
