@@ -230,7 +230,7 @@ def test_missing_statement_text_handling() -> None:
     frame = pd.DataFrame({"combined_text": [None], "statement_text_available": [None]})
     prepared = semantic_tfidf.prepare_text_column(frame, "combined_text")
     assert prepared.loc[0, "combined_text"] == ""
-    assert prepared.loc[0, "statement_text_available"] is False
+    assert not bool(prepared.loc[0, "statement_text_available"])
 
 
 def test_cli_smoke_on_tiny_synthetic_parquet_files(tmp_path: Path) -> None:

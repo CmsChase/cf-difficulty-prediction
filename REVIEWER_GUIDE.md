@@ -1,64 +1,57 @@
 # Reviewer Guide
 
-This is the two-minute map for the final v5 research version of
-`cf-difficulty-prediction`.
+This is the two-minute map for `cf-difficulty-prediction`, a reproducible
+research project on predicting Codeforces problem difficulty.
 
-## Project goal
+## What the project studies
 
-Predict official Codeforces problem ratings from public Codeforces data while
-keeping the pipeline reproducible, auditable, and careful about leakage.
+The project predicts official Codeforces problem ratings from public data:
+official API metadata, post-publication solved statistics, and problem-statement
+features. It separates post-publication prediction from cold-start prediction.
 
-## Research question
+Cold-start here means **no solved-count behavior**, not strict pre-contest
+prediction. Tags, metadata, and statement availability may not exactly match a
+real pre-contest setting.
 
-How well can Codeforces problem difficulty be predicted from:
-
-- official API metadata,
-- post-publication solved statistics, and
-- lightweight problem-statement structure features for cold-start prediction?
-
-## Key contributions
+## Main contributions
 
 - A reproducible Python pipeline from raw Codeforces API snapshots to processed
   parquet tables, features, splits, baselines, ablations, robustness checks, and
-  paper artifacts.
-- Two leakage-aware evaluation protocols: contest-grouped and forward-time.
-- A clear distinction between post-publication prediction and cold-start
-  prediction.
-- v5 statement text-light experiments that test whether simple statement
-  structure features improve cold-start prediction beyond API metadata alone.
-- A v5.1 local prediction demo CLI that demonstrates the same post-publication
-  and cold-start settings by training lightweight demo models at runtime. This
-  is an application/demo layer, not a new research result.
+  papers.
+- Leakage-aware contest-grouped and forward-time evaluation.
+- v5 statement text-light experiments showing that simple statement-structure
+  features improve cold-start prediction.
+- v6 semantic TF-IDF experiments showing that classical statement-text features
+  add signal beyond metadata and text-light structure features, while remaining
+  much weaker than deep semantic understanding.
 
 ## Main results
 
 - Final modeling data: 10,979 rated `PROGRAMMING` problems from 1,948 contests.
 - Rating range: 800 to 3500.
-- Post-publication full API results:
+- v5 full API post-publication results:
   - contest-grouped: HGB MAE 166.9, within +/-200 = 69.7%;
   - forward-time: random forest MAE 152.5, within +/-200 = 71.2%.
-- Solved-count-only is the strongest simple baseline, but full API models improve
-  over it.
-- Cold-start metadata-only prediction is much harder, around MAE 318-332.
+- Solved-count-only is the strongest simple baseline, but full API models
+  improve over it.
 - v5 metadata + statement text-light improves cold-start prediction:
   - contest-grouped: MAE 317.1 -> 284.0;
   - forward-time: MAE 331.4 -> 289.1.
-- Statement feature coverage is 99.3%: 10,906 parsed pages out of 10,979 rows,
-  with 73 missing-statement rows handled by imputation.
+- v6 metadata + TF-IDF improves over metadata only, and metadata + text-light +
+  TF-IDF improves over metadata + text-light. v6 does not replace the canonical
+  v5 full API benchmark.
 
-## Post-publication vs cold-start
+## Read these files first
 
-Post-publication settings use solved-count behavior observed after problems have
-been available to contestants. These features are strong but include exposure,
-age, popularity, and participation effects.
+- [`README.md`](README.md) for the project overview and commands.
+- [`paper/paper_v5_full_en_final.pdf`](paper/paper_v5_full_en_final.pdf) for
+  the main completed v5 paper.
+- [`paper/paper_v6_semantic_tfidf_final.pdf`](paper/paper_v6_semantic_tfidf_final.pdf)
+  for the separate semantic TF-IDF extension paper.
+- [`docs/data_manifest.md`](docs/data_manifest.md) for what data and generated
+  artifacts are local rather than committed.
 
-Cold-start settings exclude solved behavior and ask what can be predicted from
-metadata and lightweight statement structure before solve statistics accumulate.
-The full API reference is therefore not a cold-start result.
-
-## Reproducibility commands
-
-Install dependencies and run tests:
+## Reproducibility check
 
 ```powershell
 python -m pip install -r requirements.txt
@@ -66,38 +59,17 @@ $env:PYTHONPATH = "src"
 python -m pytest -q
 ```
 
-Run the v5 statement cold-start experiment after statement features exist:
-
-```powershell
-python -m cf_diff.statement_cold_start `
-  --feature-path data/processed/features/model_table.parquet `
-  --statement-feature-path data/processed/statement_features/statement_features.parquet `
-  --output-dir outputs/statement_cold_start `
-  --log-path outputs/logs/statement_cold_start.log
-```
-
-Run a known-problem v5.1 prediction demo:
-
-```powershell
-python -m cf_diff.predict_demo `
-  --feature-path data/processed/features/model_table.parquet `
-  --statement-feature-path data/processed/statement_features/statement_features.parquet `
-  --contest-id 1791 `
-  --index C
-```
-
-Final paper artifacts:
-
-- [`paper/paper_v5_full_en.md`](paper/paper_v5_full_en.md)
-- [`paper/paper_v5_full_en_final.pdf`](paper/paper_v5_full_en_final.pdf)
+Large raw snapshots, cached HTML pages, logs, and generated experiment outputs
+are intentionally not committed. The committed papers report the author's local
+frozen snapshot; rerunning against live Codeforces data later may produce small
+differences.
 
 ## Limitations
 
-- Current cold-start is metadata cold-start, not strict pre-contest cold-start.
-- Codeforces ratings are treated as labels, not as perfect ground truth.
-- Solved counts are predictive but confounded by exposure and time.
-- Age-normalized features are simple proxies, not full solve-curve models.
-- Statement text-light features are approximate HTML-derived structure features,
-  not semantic embeddings or deep NLP.
-- The v5 cold-start improvements do not prove semantic understanding of problem
-  difficulty.
+- Codeforces ratings are treated as labels, not perfect ground truth.
+- Solved counts are predictive but confounded by exposure, age, popularity, and
+  participation.
+- Cold-start experiments exclude solved behavior but are not strict pre-contest
+  forecasts.
+- Statement text-light and TF-IDF features are approximate HTML/text-derived
+  signals, not deep language understanding.
