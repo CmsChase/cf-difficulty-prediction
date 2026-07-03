@@ -23,6 +23,7 @@
           <a href="#results">Results</a>
           <a href="#figures">Figures</a>
           <a href="#cli-demo">CLI</a>
+          <a href="#v6-semantic">v6</a>
           <a href="#demo">Demo</a>
           <a href="#limitations">Limits</a>
           <span class="nav-divider"></span>
@@ -276,6 +277,80 @@
         </div>
       </section>
 
+      <section id="v6-semantic" class="section v6-section">
+        <div class="section-heading">
+          <p class="section-kicker">v6 Semantic Statement Text Modeling</p>
+          <h2>Classical TF-IDF adds semantic cold-start signal, but does not replace v5.</h2>
+          <p class="section-note">
+            v6 is a separate semantic statement-text extension. It tests whether
+            normalized problem-statement text, represented with TF-IDF, improves
+            cold-start prediction beyond metadata and v5 lightweight
+            statement-structure features.
+          </p>
+        </div>
+        <div class="cli-demo-grid">
+          <article class="cli-copy">
+            <p>
+              The v6 extension uses classical bag-of-words TF-IDF, not BERT,
+              transformers, embeddings, LLMs, or deep semantic understanding.
+              TF-IDF alone is weak, but metadata + TF-IDF improves over metadata
+              only, and metadata + text-light + TF-IDF improves over metadata +
+              text-light.
+            </p>
+            <p>
+              The improvement is larger on forward-time validation than on
+              contest-grouped validation. This remains metadata/statement
+              cold-start rather than strict pre-contest prediction, because tags
+              may be post-contest metadata. The v6 full_api_reference is a
+              ridge-based internal comparison and does not replace the canonical
+              v5 full API benchmark.
+            </p>
+            <div class="inline-links">
+              <a href="../paper/paper_v6_semantic_tfidf.md">v6 paper Markdown</a>
+              <a href="../paper/paper_v6_semantic_tfidf_final.pdf">v6 paper PDF</a>
+            </div>
+          </article>
+          <div class="result-grid v6-result-grid">
+            <article class="result-card">
+              <p>Contest metadata + TF-IDF</p>
+              <strong>340.5 -> 311.1</strong>
+              <span>MAE vs metadata only</span>
+            </article>
+            <article class="result-card">
+              <p>Forward metadata + TF-IDF</p>
+              <strong>365.4 -> 325.4</strong>
+              <span>MAE vs metadata only</span>
+            </article>
+            <article class="result-card accent">
+              <p>Contest text-light + TF-IDF</p>
+              <strong>310.6 -> 298.5</strong>
+              <span>MAE improvement</span>
+            </article>
+            <article class="result-card accent">
+              <p>Forward text-light + TF-IDF</p>
+              <strong>335.8 -> 316.2</strong>
+              <span>MAE improvement</span>
+            </article>
+          </div>
+        </div>
+        <div class="figure-wall v6-figures">
+          <figure>
+            <img
+              src="../paper/figures/v6_semantic_mae_comparison.png"
+              alt="v6 semantic TF-IDF MAE comparison"
+            />
+            <figcaption>v6 MAE comparison across metadata, text-light, TF-IDF, and combined settings.</figcaption>
+          </figure>
+          <figure>
+            <img
+              src="../paper/figures/v6_semantic_improvement_comparison.png"
+              alt="v6 semantic TF-IDF improvement comparison"
+            />
+            <figcaption>Absolute MAE improvements from adding TF-IDF statement text features.</figcaption>
+          </figure>
+        </div>
+      </section>
+
       <section id="demo" class="section demo-section">
         <div class="section-heading">
           <p class="section-kicker">Illustrative browser demo only</p>
@@ -348,6 +423,8 @@
           <li>Solved count is not pure difficulty; it is shaped by exposure and time.</li>
           <li>Statement text-light features are approximate HTML-derived structure features.</li>
           <li>No deep NLP, semantic embeddings, or LLM-based statement understanding in v5.</li>
+          <li>v6 TF-IDF is classical bag-of-words text modeling, not deep algorithmic understanding.</li>
+          <li>v6 is metadata/statement cold-start and does not replace the canonical v5 benchmark.</li>
           <li>The evaluation is Codeforces-only.</li>
           <li>Cold-start prediction remains harder than post-publication prediction.</li>
         </ul>
@@ -361,6 +438,8 @@
           <a href="../REVIEWER_GUIDE.md">REVIEWER_GUIDE.md</a>
           <a href="../paper/paper_v5_full_en_final.pdf">paper_v5_full_en_final.pdf</a>
           <a href="../paper/paper_v5_full_en.md">paper_v5_full_en.md</a>
+          <a href="../paper/paper_v6_semantic_tfidf_final.pdf">paper_v6_semantic_tfidf_final.pdf</a>
+          <a href="../paper/paper_v6_semantic_tfidf.md">paper_v6_semantic_tfidf.md</a>
         </div>
       </section>
     </main>

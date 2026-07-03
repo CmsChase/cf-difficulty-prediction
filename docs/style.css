@@ -487,10 +487,22 @@ h1 {
   color: var(--green);
 }
 
+.v6-result-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.v6-result-grid .result-card {
+  min-height: 145px;
+}
+
 .figure-wall {
   display: grid;
   gap: 1rem;
   grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.v6-figures {
+  margin-top: 1rem;
 }
 
 figure {
