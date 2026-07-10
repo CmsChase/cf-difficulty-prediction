@@ -19,6 +19,7 @@ from cf_diff.prospective_model import (
     ProspectiveModelError,
     freeze_prospective_model,
     predict_prospective,
+    verify_frozen_model,
 )
 
 
@@ -155,6 +156,13 @@ def test_freeze_writes_plain_json_hash_manifest_and_obeys_cutoff(
             statement_features_path.read_bytes()
         ).hexdigest(),
     }
+    verified = verify_frozen_model(
+        protocol_path=PROTOCOL_PATH,
+        model_path=model_path,
+        manifest_path=manifest_path,
+    )
+    assert verified["model_artifact_sha256"] == artifact_hash
+    assert verified["training_row_count"] == 3
 
 
 def test_freeze_only_uses_allowlisted_pre_cutoff_features(tmp_path: Path) -> None:

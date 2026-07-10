@@ -620,6 +620,28 @@ def _load_verified_bundle(
     return protocol, model, manifest
 
 
+def verify_frozen_model(
+    *,
+    protocol_path: Path = DEFAULT_PROTOCOL_PATH,
+    model_path: Path = DEFAULT_MODEL_PATH,
+    manifest_path: Path = DEFAULT_MANIFEST_PATH,
+) -> dict[str, object]:
+    """Verify the committed protocol, JSON model, and freeze-manifest hashes."""
+    protocol, model, manifest = _load_verified_bundle(
+        protocol_path=protocol_path,
+        model_path=model_path,
+        manifest_path=manifest_path,
+    )
+    return {
+        "protocol_id": protocol["protocol_id"],
+        "model_bundle_id": model["model_bundle_id"],
+        "model_artifact_sha256": manifest["model_artifact_sha256"],
+        "source_commit": manifest.get("source_commit"),
+        "training_cutoff_utc": manifest.get("training_cutoff_utc"),
+        "training_row_count": manifest.get("training_row_count"),
+    }
+
+
 def _column_tokens(column: object) -> set[str]:
     return {
         token
@@ -842,6 +864,14 @@ def _build_argument_parser() -> argparse.ArgumentParser:
     predict.add_argument("--output", type=Path, required=True)
     predict.add_argument("--contest-start-utc", required=True)
     predict.add_argument("--prediction-created-at-utc", default=None)
+
+    verify = subparsers.add_parser(
+        "verify",
+        help="verify protocol, model, and manifest hashes",
+    )
+    verify.add_argument("--protocol", type=Path, default=DEFAULT_PROTOCOL_PATH)
+    verify.add_argument("--model", type=Path, default=DEFAULT_MODEL_PATH)
+    verify.add_argument("--manifest", type=Path, default=DEFAULT_MANIFEST_PATH)
     return parser
 
 
@@ -861,7 +891,7 @@ def main(argv: Sequence[str] | None = None) -> int:
             )
             print(f"Wrote frozen model: {paths['model']}")
             print(f"Wrote freeze manifest: {paths['manifest']}")
-        else:
+        elif args.command == "predict":
             output = predict_prospective(
                 protocol_path=args.protocol,
                 model_path=args.model,
@@ -872,6 +902,17 @@ def main(argv: Sequence[str] | None = None) -> int:
                 prediction_created_at_utc=args.prediction_created_at_utc,
             )
             print(f"Wrote prospective predictions: {output}")
+        else:
+            print(
+                json.dumps(
+                    verify_frozen_model(
+                        protocol_path=args.protocol,
+                        model_path=args.model,
+                        manifest_path=args.manifest,
+                    ),
+                    sort_keys=True,
+                )
+            )
     except (ProspectiveModelError, OSError, ValueError, KeyError) as error:
         print(f"error: {error}", file=sys.stderr)
         return 1

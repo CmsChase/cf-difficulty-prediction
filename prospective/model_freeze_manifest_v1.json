@@ -1,0 +1,17 @@
+{
+  "frozen_at_utc": "2026-07-10T07:32:47Z",
+  "input_sha256": {
+    "model_table": "df6d1240316966c6bd1679165df038fed443bebb70b61b975264850e52417259",
+    "statement_features": "8bda6bee567247fe1be6220b9b216af87b28e03327eb53b020109c0fd7c06550"
+  },
+  "model_artifact_sha256": "0169e23cbdcd5a10701883c82c54f4d8fd62fc0acfeef5188c289cc7768e8620",
+  "model_bundle_id": "text-light-ridge-v1",
+  "protocol_id": "cf-difficulty-prospective-v1",
+  "protocol_sha256": "2562c136df52f7e2e48e626109d51101f0c355c9b541936c7bcb564ab027c548",
+  "schema_version": 1,
+  "source_commit": "29973fbb2d28203eb904679979ad006bba1495d6",
+  "training_cutoff_utc": "2026-07-12T00:00:00Z",
+  "training_row_count": 10979,
+  "training_start_time_seconds_max": 1781793300.0,
+  "training_start_time_seconds_min": 1266580800.0
+}

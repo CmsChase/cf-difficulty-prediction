@@ -1,0 +1,5 @@
+# Hash-committed prospective artifacts must have identical bytes on every OS.
+configs/prospective_protocol_v1.json text eol=lf
+prospective/model_bundle_v1.json text eol=lf
+prospective/model_freeze_manifest_v1.json text eol=lf
+prospective/ledger/*.jsonl text eol=lf
