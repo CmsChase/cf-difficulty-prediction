@@ -618,23 +618,6 @@ def build_exposure_summary(
     age_counts = (
         frame["age_bucket"].astype(str).value_counts().reindex(AGE_BUCKET_ORDER, fill_value=0)
     )
-    best = {}
-    if not age_bucket_metrics.empty:
-        average_metrics = (
-            age_bucket_metrics.groupby(
-                ["strategy", "model_name", "feature_set_name"],
-                as_index=False,
-            )["MAE"]
-            .mean()
-            .sort_values(["MAE", "strategy", "feature_set_name"], kind="mergesort")
-        )
-        row = average_metrics.iloc[0]
-        best = {
-            "strategy": row["strategy"],
-            "model_name": row["model_name"],
-            "feature_set_name": row["feature_set_name"],
-            "mean_age_bucket_MAE": _finite_float(row["MAE"]),
-        }
     mismatch_counts = (
         mismatch_examples["mismatch_group"].value_counts()
         if "mismatch_group" in mismatch_examples.columns
@@ -647,11 +630,14 @@ def build_exposure_summary(
         "age_bucket_counts": {
             bucket: int(age_counts.loc[bucket]) for bucket in AGE_BUCKET_ORDER
         },
-        "main_finding_from_age_bucket_analysis": {
-            **best,
+        "descriptive_age_bucket_analysis": {
+            "analysis_role": "exploratory_descriptive_test_comparison",
+            "comparison_row_count": int(len(age_bucket_metrics)),
+            "model_selection_performed": False,
             "note": (
                 "Age-bucket metrics compare exposure-sensitive feature settings "
-                "on held-out test rows; lower MAE does not imply causality."
+                "descriptively on test-partition rows. They are not used to select "
+                "a model, feature setting, or winner, and do not imply causality."
             ),
         },
         "main_finding_from_mismatch_analysis": {

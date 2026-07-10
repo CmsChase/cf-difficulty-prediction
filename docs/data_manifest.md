@@ -4,6 +4,11 @@ This repository is a research codebase, not a hosted dataset release. It uses
 local Codeforces API snapshots and locally cached Codeforces problem-page HTML
 to build the reported v5 and v6 results.
 
+Historical counts and outputs in this document are governed by the
+[2026-07-10 public erratum](ERRATUM_2026-07-10.md). They are retrospective and
+must not be described as a still-unseen final test. New future evidence follows
+the [frozen prospective protocol](RESEARCH_PROTOCOL_V1.md).
+
 Large raw data, cached HTML pages, logs, and generated experiment outputs are
 intentionally not committed. As a result, rerunning the full pipeline later
 against live Codeforces data may produce slightly different numbers. The
@@ -48,6 +53,18 @@ Important local artifact paths used by the pipeline:
   `paper/paper_v6_semantic_tfidf.md`
 - v6 PDF:
   `paper/paper_v6_semantic_tfidf_final.pdf`
+- Canonical corrected experiment config:
+  `configs/experiment.yaml`
+- Historical effective split config:
+  `configs/experiment_legacy_v6.yaml`
+- Frozen prospective protocol:
+  `configs/prospective_protocol_v1.json`
+- Prospective model freeze manifest:
+  `prospective/model_freeze_manifest_v1.json`
+- Future append-only ledgers:
+  `prospective/ledger/predictions.jsonl` and
+  `prospective/ledger/reveals.jsonl` (created only when genuine future events
+  exist)
 
 The local raw snapshot metadata records provenance and hashes when present.
 However, not all large artifacts are committed, so this repository alone should

@@ -2,9 +2,17 @@
 
 [![Tests](https://github.com/CmsChase/cf-difficulty-prediction/actions/workflows/tests.yml/badge.svg)](https://github.com/CmsChase/cf-difficulty-prediction/actions/workflows/tests.yml)
 
-A reproducible v5 research pipeline for predicting Codeforces problem ratings
-from official API metadata, solved statistics, exposure-aware features, and
-lightweight statement-structure features.
+A research pipeline for predicting Codeforces problem ratings from official API
+metadata, solved statistics, exposure-aware features, and lightweight
+statement-structure features. Historical v5/v6 artifacts are preserved for
+audit; new confirmatory work follows a frozen prospective protocol.
+
+> [!IMPORTANT]
+> A 2026-07-10 audit found that historical runs silently used 70/15/15 splits
+> for both strategies and that several reported winners were selected after
+> observing test MAE. Read the [public erratum](docs/ERRATUM_2026-07-10.md)
+> before interpreting any historical number. Those results are retrospective,
+> not confirmatory.
 
 ![Project overview](docs/project_overview.png)
 
@@ -15,19 +23,21 @@ If you only want the main idea, key results, and how to read the project quickly
 > **Cold-start note:** Cold-start here means no solved-count behavior, not necessarily strict pre-contest prediction. Tags, metadata, and statement availability may not exactly match a real pre-contest setting.
 
 Useful companion notes:
+- [Public erratum](docs/ERRATUM_2026-07-10.md)
+- [Frozen prospective protocol](docs/RESEARCH_PROTOCOL_V1.md)
 - [Data and artifact manifest](docs/data_manifest.md)
-- [Error analysis](docs/error_analysis.md)
+- [Error analysis](error_analysis.md)
 
-## Project snapshot
+## Historical project snapshot (retrospective)
 
-| Experiment | Main setting | Best / key result | Interpretation |
+| Experiment | Main setting | Legacy reported result | Current interpretation |
 |---|---|---:|---|
-| Contest-grouped prediction | HGB full API | MAE 166.9, within +/-200 = 69.7% | Generalizes to unseen contests |
-| Forward-time prediction | RF full API | MAE 152.5, within +/-200 = 71.2% | Tests chronological generalization |
-| Solved-only baseline | solved-count only | MAE 227-274 | Strongest simple public signal |
-| Cold-start prediction | metadata only | MAE 318-332 | New-problem prediction is much harder |
-| v5 cold-start extension | metadata + text-light | MAE improves by 33.0-42.3 | Statement structure adds cold-start signal |
-| Rolling temporal validation | full API + age norm | average MAE 146.0 | Best across rolling chronological folds |
+| Contest-grouped prediction | HGB full API | MAE 166.9, within +/-200 = 69.7% | Legacy descriptive evaluation |
+| Forward-time prediction | RF full API | MAE 152.5, within +/-200 = 71.2% | Legacy descriptive evaluation |
+| Solved-only baseline | solved-count only | MAE 227-274 | Hypothesis-generating comparison |
+| Cold-start prediction | metadata only | MAE 318-332 | Legacy descriptive evaluation |
+| v5 cold-start extension | metadata + text-light | MAE improves by 33.0-42.3 | Requires future confirmation |
+| Rolling temporal validation | full API + age norm | average MAE 146.0 | Internal temporal analysis, not the future test |
 
 ## Research question
 
@@ -48,7 +58,7 @@ This project separates two settings:
 > availability may not exactly match a real pre-contest setting; the project
 > treats this limitation explicitly.
 
-## Main findings
+## Historical findings (retrospective)
 
 - The processed dataset contains 10,979 rated `PROGRAMMING` problems from 1,948
   contests.
@@ -91,10 +101,51 @@ scripts/                 Local helper scripts
 src/cf_diff/             Pipeline modules
 tests/                   Unit tests
 outputs/paper_tables/    Small committed paper-ready CSV tables
+prospective/             Frozen model manifest and future hash-chain ledgers
 ```
 
 Large generated data, raw API snapshots, cached HTML pages, trained model
 artifacts, logs, and experiment outputs are intentionally not committed.
+
+## Research governance and future blind test
+
+The canonical config is [`configs/experiment.yaml`](configs/experiment.yaml).
+It is schema-versioned, rejects missing/unknown settings, and its effective
+SHA-256 fingerprint is written into downstream metadata. The file
+[`configs/experiment_legacy_v6.yaml`](configs/experiment_legacy_v6.yaml)
+records the split ratios that actually governed historical runs.
+
+Candidate models are now selected only on validation MAE. Test metrics are
+joined only after selection, and test-only exposure comparisons are explicitly
+exploratory. Because old test outcomes are already known, the independent
+evidence comes from the future cohort in
+[`configs/prospective_protocol_v1.json`](configs/prospective_protocol_v1.json).
+The future prediction and reveal ledgers are separate append-only SHA-256
+chains; no historical rows will be backfilled as prospective observations.
+
+The frozen bundle is used without fitting:
+
+```powershell
+python -m cf_diff.prospective_model predict `
+  --input prospective/inputs/CONTEST_t0_features.csv `
+  --output prospective/predictions/CONTEST_predictions.csv `
+  --contest-start-utc 2026-07-12T12:00:00Z
+
+python -m cf_diff.prospective_ledger record `
+  --predictions prospective/predictions/CONTEST_predictions.csv `
+  --protocol configs/prospective_protocol_v1.json `
+  --manifest prospective/model_freeze_manifest_v1.json `
+  --ledger prospective/ledger/predictions.jsonl
+
+python -m cf_diff.prospective_ledger verify
+```
+
+Commit and push the sanitized T0 input, prediction CSV, and prediction ledger
+before any reveal. At least 72 hours after contest start, an exact
+`contest_id,index,official_rating` CSV may be appended with the separate
+`prospective_ledger reveal` command. See
+[`prospective/ledger/README.md`](prospective/ledger/README.md) for the full
+operational rules.
 
 ## Setup
 
@@ -146,8 +197,8 @@ reported experiments.
 
 ## v6 Semantic TF-IDF Extension
 
-v6 is a separate semantic statement-text extension on top of the completed v5
-research project. It extends cold-start prediction with classical TF-IDF
+v6 is a historical semantic statement-text extension on top of v5. It extends
+cold-start prediction with classical TF-IDF
 features extracted from normalized Codeforces problem-statement text.
 
 This is not BERT, transformers, embeddings, LLMs, or deep semantic
@@ -167,7 +218,7 @@ Main v6 findings:
 - Metadata + text-light + TF-IDF improves over metadata + text-light.
 - The improvement is larger on forward-time validation than contest-grouped
   validation.
-- v6 does not replace the canonical v5 full API benchmark; its
+- v6 does not replace the historical v5 full API benchmark; its
   `full_api_reference` is a ridge-based internal comparison.
 
 Compact v6 results:
@@ -185,7 +236,8 @@ Compact v6 results:
 python -m pytest -q
 ```
 
-Current tested state: `119 passed`.
+The CI badge above and the command output are the source of truth for the
+current test count.
 
 ## Notes on interpretation
 

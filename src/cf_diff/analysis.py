@@ -16,10 +16,15 @@ import matplotlib
 import numpy as np
 import pandas as pd
 
+from cf_diff.features import (
+    experiment_config_fingerprint,
+    load_experiment_config,
+    write_json,
+)
+from cf_diff.model_selection import build_validation_ranked_report
+
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt  # noqa: E402
-
-from cf_diff.features import write_json
 
 DEFAULT_CONFIG_PATH: Final[Path] = Path("configs/experiment.yaml")
 DEFAULT_FEATURE_PATH: Final[Path] = Path(
@@ -158,8 +163,23 @@ def load_metrics(metrics_dir: Path) -> pd.DataFrame:
     return metrics
 
 
+def validate_metrics_config_fingerprint(
+    metrics: pd.DataFrame,
+    expected_config_fingerprint_sha256: str,
+) -> None:
+    """Reject analysis of metrics produced by another effective config."""
+    column = "config_fingerprint_sha256"
+    _require_columns(metrics, (column,), "metrics")
+    values = set(metrics[column].dropna().astype(str))
+    if values != {expected_config_fingerprint_sha256}:
+        raise AnalysisError(
+            "Baseline metrics config fingerprint does not match the requested "
+            "experiment config."
+        )
+
+
 def build_model_ranking(metrics: pd.DataFrame) -> pd.DataFrame:
-    """Rank models by test MAE separately for each split strategy."""
+    """Rank models by validation MAE and attach untouched test metrics."""
     _require_columns(
         metrics,
         (
@@ -172,23 +192,11 @@ def build_model_ranking(metrics: pd.DataFrame) -> pd.DataFrame:
         ),
         "metrics",
     )
-    ranking = metrics.loc[metrics["split_name"].eq("test")].copy()
-    ranking = ranking.loc[
-        :,
-        [
-            "strategy",
-            "model_name",
-            *METRIC_COLUMNS,
-            "feature_count",
-            "row_count",
-        ],
-    ]
-    ranking = ranking.sort_values(
-        ["strategy", "MAE", "model_name"],
-        kind="mergesort",
-    ).reset_index(drop=True)
-    ranking["rank_by_MAE"] = (
-        ranking.groupby("strategy").cumcount().add(1).astype(int)
+    ranking = build_validation_ranked_report(
+        metrics,
+        group_columns=("strategy",),
+        candidate_columns=("model_name",),
+        metric_columns=METRIC_COLUMNS,
     )
     return ranking.loc[
         :,
@@ -196,20 +204,27 @@ def build_model_ranking(metrics: pd.DataFrame) -> pd.DataFrame:
             "strategy",
             "model_name",
             *METRIC_COLUMNS,
+            *(f"validation_{column}" for column in METRIC_COLUMNS),
             "feature_count",
             "row_count",
-            "rank_by_MAE",
+            "selection_split",
+            "report_split",
+            "selection_metric",
+            "selection_rank",
         ],
     ]
 
 
 def best_model_by_strategy(ranking: pd.DataFrame) -> dict[str, dict[str, object]]:
-    """Return the best test-MAE model for each split strategy."""
+    """Return the validation-selected model and its test report."""
     best: dict[str, dict[str, object]] = {}
     for strategy, group in ranking.groupby("strategy", sort=True):
-        row = group.sort_values(["rank_by_MAE", "model_name"]).iloc[0]
+        row = group.sort_values(["selection_rank", "model_name"]).iloc[0]
         best[strategy] = {
             "model_name": str(row["model_name"]),
+            "selection_split": str(row["selection_split"]),
+            "validation_MAE": _finite_float(row["validation_MAE"]),
+            "report_split": str(row["report_split"]),
             "test_MAE": _finite_float(row["MAE"]),
             "test_RMSE": _finite_float(row["RMSE"]),
             "test_R2": _finite_float(row["R2"]),
@@ -220,13 +235,16 @@ def best_model_by_strategy(ranking: pd.DataFrame) -> dict[str, dict[str, object]
 
 
 def _best_full_model_row(strategy_ranking: pd.DataFrame) -> pd.Series:
-    """Select the best non-standard-baseline row, falling back to best overall."""
+    """Select the best validated full model, falling back to best overall."""
     full_models = strategy_ranking.loc[
         ~strategy_ranking["model_name"].isin(STANDARD_BASELINES)
     ]
     if full_models.empty:
         full_models = strategy_ranking
-    return full_models.sort_values(["MAE", "model_name"], kind="mergesort").iloc[0]
+    return full_models.sort_values(
+        ["validation_MAE", "model_name"],
+        kind="mergesort",
+    ).iloc[0]
 
 
 def build_baseline_improvements(ranking: pd.DataFrame) -> pd.DataFrame:
@@ -406,7 +424,7 @@ def build_top_error_cases(
     *,
     top_n: int = 50,
 ) -> pd.DataFrame:
-    """Return largest absolute test errors for the best model in each strategy."""
+    """Return largest test errors for each validation-selected model."""
     rows = []
     for strategy, predictions in predictions_by_strategy.items():
         best_model = best_models[strategy]
@@ -543,18 +561,20 @@ def build_analysis_summary(
     ranking: pd.DataFrame,
     improvements: pd.DataFrame,
     train_test_gap: pd.DataFrame,
+    *,
+    config_fingerprint_sha256: str | None = None,
 ) -> dict[str, object]:
     """Build the machine-readable analysis summary."""
     best = best_model_by_strategy(ranking)
     rankings = {
-        strategy: group.sort_values("rank_by_MAE").to_dict(orient="records")
+        strategy: group.sort_values("selection_rank").to_dict(orient="records")
         for strategy, group in ranking.groupby("strategy", sort=True)
     }
     baseline_rankings = {
         strategy: (
             group.loc[group["model_name"].isin(STANDARD_BASELINES)]
-            .sort_values(["MAE", "model_name"], kind="mergesort")
-            .loc[:, ["model_name", "MAE", "rank_by_MAE"]]
+            .sort_values(["validation_MAE", "model_name"], kind="mergesort")
+            .loc[:, ["model_name", "validation_MAE", "MAE", "selection_rank"]]
             .to_dict(orient="records")
         )
         for strategy, group in ranking.groupby("strategy", sort=True)
@@ -617,16 +637,19 @@ def build_analysis_summary(
                 )
             }
         )
-    return {
+    summary: dict[str, object] = {
         "created_at_utc": datetime.now(timezone.utc).isoformat(timespec="seconds"),
         "best_model_by_strategy": best,
-        "model_ranking_by_test_MAE": rankings,
-        "standard_baseline_ranking_by_test_MAE": baseline_rankings,
+        "model_selection_by_validation_MAE_with_test_report": rankings,
+        "standard_baseline_validation_ranking_with_test_report": baseline_rankings,
         "baseline_improvements": improvements.to_dict(orient="records"),
         "train_test_gap": train_test_gap.to_dict(orient="records"),
         "generalization_gap_notes": generalization_gap_notes,
         "overfitting_notes": overfitting_notes,
     }
+    if config_fingerprint_sha256 is not None:
+        summary["config_fingerprint_sha256"] = config_fingerprint_sha256
+    return summary
 
 
 def _save_figure(fig: plt.Figure, path: Path) -> None:
@@ -661,7 +684,7 @@ def plot_metric_by_model(
     if ranking.empty:
         _save_figure(_empty_figure(title), path)
         return
-    models = ranking.sort_values(["rank_by_MAE", "model_name"])[
+    models = ranking.sort_values(["selection_rank", "model_name"])[
         "model_name"
     ].drop_duplicates().tolist()
     x = np.arange(len(models))
@@ -696,7 +719,7 @@ def plot_predicted_vs_actual(
     *,
     title: str,
 ) -> None:
-    """Save predicted-vs-actual scatter for one best test-set model."""
+    """Save test scatter for one validation-selected model."""
     subset = predictions.loc[
         predictions["split_name"].eq("test")
         & predictions["model_name"].eq(model_name)
@@ -777,17 +800,20 @@ def run_analysis(
     log_path: Path,
 ) -> dict[str, Path]:
     """Run baseline result analysis and write paper-ready artifacts."""
-    del config_path, contest_split_path, time_split_path
+    del contest_split_path, time_split_path
+    config = load_experiment_config(config_path)
+    config_fingerprint = experiment_config_fingerprint(config)
     logger = configure_logger(log_path)
     try:
         metrics = load_metrics(baseline_metrics_dir)
+        validate_metrics_config_fingerprint(metrics, config_fingerprint)
         ranking = build_model_ranking(metrics)
         improvements = build_baseline_improvements(ranking)
         train_test_gap = build_train_test_gap_summary(metrics)
         best_models = {
             strategy: row["model_name"]
             for strategy, row in ranking.loc[
-                ranking["rank_by_MAE"].eq(1)
+                ranking["selection_rank"].eq(1)
             ].set_index("strategy").to_dict(orient="index").items()
         }
         feature_frame = pd.read_parquet(feature_path, engine="pyarrow")
@@ -803,7 +829,12 @@ def run_analysis(
             predictions_by_strategy,
             best_models,
         )
-        summary = build_analysis_summary(ranking, improvements, train_test_gap)
+        summary = build_analysis_summary(
+            ranking,
+            improvements,
+            train_test_gap,
+            config_fingerprint_sha256=config_fingerprint,
+        )
 
         output_dir = output_dir.resolve()
         summary_dir = output_dir / "summary"
@@ -814,7 +845,9 @@ def run_analysis(
 
         paths = {
             "analysis_summary": summary_dir / "analysis_summary.json",
-            "model_ranking_test": tables_dir / "model_ranking_test.csv",
+            "model_selection_report": (
+                tables_dir / "model_selection_validation_test.csv"
+            ),
             "baseline_improvements": tables_dir / "baseline_improvements.csv",
             "top_error_cases": tables_dir / "top_error_cases.csv",
             "error_by_tag": tables_dir / "error_by_tag.csv",
@@ -837,7 +870,7 @@ def run_analysis(
         }
 
         write_json(paths["analysis_summary"], summary)
-        ranking.to_csv(paths["model_ranking_test"], index=False)
+        ranking.to_csv(paths["model_selection_report"], index=False)
         improvements.to_csv(paths["baseline_improvements"], index=False)
         top_errors.to_csv(paths["top_error_cases"], index=False)
         error_by_tag.to_csv(paths["error_by_tag"], index=False)

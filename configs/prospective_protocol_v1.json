@@ -1,0 +1,122 @@
+{
+  "schema_version": 1,
+  "protocol_id": "cf-difficulty-prospective-v1",
+  "status": "frozen",
+  "protocol_frozen_at_utc": "2026-07-10T07:05:00Z",
+  "research_question": "Do statement-structure features improve genuinely prospective Codeforces rating prediction beyond contest-index position alone?",
+  "cohort": {
+    "eligibility_start_utc": "2026-07-12T00:00:00Z",
+    "eligibility_end_utc": "2027-02-28T23:59:59Z",
+    "minimum_eligible_contests": 30,
+    "minimum_eligible_problems": 200,
+    "unit_of_analysis": "rated PROGRAMMING problem",
+    "include": [
+      "Codeforces contests whose scheduled start is inside the eligibility window",
+      "problems classified as PROGRAMMING that later receive an official numeric rating",
+      "one prediction recorded before the official rating is queried or joined"
+    ],
+    "exclude": [
+      "unrated contests or problems without an official numeric rating by cohort close",
+      "non-PROGRAMMING problem types",
+      "problems whose statement could not be captured before the reveal step",
+      "duplicate contest_id and index keys"
+    ],
+    "close_rule": "Close at the eligibility end timestamp, but do not run the confirmatory analysis unless both minimum sample thresholds are met; otherwise report the cohort as underpowered without extending it post hoc."
+  },
+  "prediction_timepoint": {
+    "name": "T0",
+    "definition": "After the public problem statement is available and before this project reads or joins the official problem rating.",
+    "lock_deadline_minutes_after_contest_start": 30,
+    "public_commitment": "Append the prediction hash-chain ledger to GitHub before running the reveal command."
+  },
+  "model_bundle": {
+    "bundle_id": "text-light-ridge-v1",
+    "training_population": "All eligible historical rows strictly before cohort.eligibility_start_utc; historical train, validation, and test labels are treated only as development data for this new future cohort.",
+    "estimator": "Ridge regression",
+    "alpha": 1.0,
+    "randomness": "none",
+    "numeric_preprocessing": "Per-feature median imputation, then population-variance standardization; constants use scale 1.",
+    "primary_feature_columns": [
+      "index_rank",
+      "index_number",
+      "statement_available",
+      "statement_char_len",
+      "statement_word_count",
+      "statement_line_count",
+      "statement_paragraph_count",
+      "input_section_char_len",
+      "output_section_char_len",
+      "note_section_char_len",
+      "has_input_section",
+      "has_output_section",
+      "has_note_section",
+      "sample_count",
+      "sample_input_output_block_count",
+      "number_count",
+      "integer_count",
+      "float_count",
+      "inequality_symbol_count",
+      "math_symbol_count",
+      "constraint_keyword_count",
+      "big_o_like_count",
+      "uppercase_token_count",
+      "single_letter_variable_count",
+      "latex_like_token_count",
+      "code_like_token_count",
+      "kw_graph",
+      "kw_tree",
+      "kw_array",
+      "kw_string",
+      "kw_dp",
+      "kw_geometry",
+      "kw_greedy",
+      "kw_probability",
+      "kw_interactive",
+      "kw_permutation",
+      "kw_binary",
+      "kw_shortest_path",
+      "kw_query",
+      "time_limit_ms",
+      "memory_limit_mb",
+      "has_time_limit",
+      "has_memory_limit"
+    ],
+    "comparator_feature_columns": [
+      "index_rank",
+      "index_number"
+    ],
+    "forbidden_prediction_inputs": [
+      "rating",
+      "points",
+      "tags",
+      "solved_count",
+      "submission or acceptance statistics",
+      "manually assigned difficulty labels"
+    ],
+    "freeze_requirement": "The JSON model bundle and freeze manifest, including SHA-256 hashes and source commit, must be committed before the first eligible prediction."
+  },
+  "outcome": {
+    "field": "official Codeforces problem rating",
+    "reveal_source": "Codeforces problemset.problems queried only by the separate reveal step",
+    "minimum_reveal_delay_hours_after_contest_start": 72,
+    "rounding": "Predictions remain floating point in the ledger; no rounding before metric calculation."
+  },
+  "confirmatory_analysis": {
+    "primary_estimand": "Mean paired absolute-error improvement: index-only comparator absolute error minus text-light model absolute error.",
+    "primary_metric": "problem-level MAE difference",
+    "uncertainty": "Two-sided 95% percentile interval from 10000 contest-cluster bootstrap resamples.",
+    "bootstrap_seed": 20260710,
+    "success_rule": "The primary model is confirmatorily better only if the entire 95% interval for paired MAE improvement is above zero.",
+    "secondary_metrics": [
+      "primary-model problem-level MAE",
+      "contest-macro MAE",
+      "within-100 accuracy",
+      "within-200 accuracy",
+      "performance by pre-specified index-rank bands A-B, C-D, and E+"
+    ],
+    "multiplicity": "Only the paired MAE improvement is confirmatory; all secondary and subgroup results are descriptive.",
+    "missing_outcomes": "Do not impute ratings. Report eligible predictions lacking a rating separately and exclude them from metric denominators.",
+    "no_peeking_rule": "Do not calculate aggregate prospective performance or alter model, features, exclusions, endpoints, or thresholds before cohort close."
+  },
+  "amendments": "Never edit this frozen file in place after the first prediction. Any change requires a new protocol_id and a new prospective cohort; document deviations without deleting the original ledger."
+}

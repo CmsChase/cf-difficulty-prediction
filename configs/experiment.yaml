@@ -1,27 +1,12 @@
+schema_version: 1
+
 project:
   name: cf_difficulty_prediction
   random_seed: 42
 
-data:
-  raw_root: data/raw/codeforces
-  interim_dir: data/interim
-  processed_dir: data/processed
-  features_dir: data/processed/features
-  splits_dir: data/processed/splits
-
-filters:
-  problem_type: PROGRAMMING
-  require_rating: true
-  require_contest_id: true
-  require_start_time_for_forward_split: true
-  min_rating: 800
-  max_rating: 3500
-
 features:
   include_points: true
   include_tags: true
-  include_solved_count: true
-  include_log_solved_count: true
   min_tag_frequency: 5
 
 splits:

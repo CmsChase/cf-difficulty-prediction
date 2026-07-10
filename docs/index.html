@@ -25,6 +25,7 @@
           <a href="#v6-semantic">v6</a>
           <a href="#demo">Demo</a>
           <a href="#limitations">Limits</a>
+          <a href="https://github.com/CmsChase/cf-difficulty-prediction/blob/main/docs/ERRATUM_2026-07-10.md">Erratum</a>
           <span class="nav-divider"></span>
           <a href="../README.md">README</a>
           <a class="nav-pill" href="../paper/paper_v5_full_en_final.pdf">Paper</a>
@@ -33,9 +34,21 @@
     </header>
 
     <main>
+      <section class="question" aria-label="Research governance notice">
+        <p class="section-kicker">Public correction · 2026-07-10</p>
+        <h2>Historical metrics are retrospective, not confirmatory.</h2>
+        <p>
+          An audit found a split-configuration mismatch and test-based winner
+          selection. Read the
+          <a href="https://github.com/CmsChase/cf-difficulty-prediction/blob/main/docs/ERRATUM_2026-07-10.md">public erratum</a>
+          and the
+          <a href="https://github.com/CmsChase/cf-difficulty-prediction/blob/main/docs/RESEARCH_PROTOCOL_V1.md">frozen future-test protocol</a>
+          before interpreting the legacy numbers below.
+        </p>
+      </section>
       <section class="hero">
         <div class="hero-copy">
-          <p class="eyebrow">Completed v5 research release</p>
+          <p class="eyebrow">Historical v5 release · retrospective</p>
           <h1>Codeforces Difficulty Prediction</h1>
           <p class="subtitle">
             A reproducible ML study of post-publication and cold-start problem
@@ -69,7 +82,7 @@
             <div class="issue-card">
               <div class="issue-head">
                 <span>CFD-10979</span>
-                <span class="status">research complete</span>
+                <span class="status">legacy · see erratum</span>
               </div>
               <h2>Predict rating before the leaderboard tells the whole story.</h2>
               <p>
@@ -371,7 +384,7 @@
           <li>Statement text-light features are approximate HTML-derived structure features.</li>
           <li>No deep NLP, semantic embeddings, or LLM-based statement understanding in v5.</li>
           <li>v6 TF-IDF is classical bag-of-words text modeling, not deep algorithmic understanding.</li>
-          <li>v6 is metadata/statement cold-start and does not replace the canonical v5 benchmark.</li>
+          <li>v6 is metadata/statement cold-start and does not replace the historical v5 benchmark.</li>
           <li>The evaluation is Codeforces-only.</li>
           <li>Cold-start prediction remains harder than post-publication prediction.</li>
         </ul>

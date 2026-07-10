@@ -1,5 +1,11 @@
 # Error Analysis
 
+> **Governance notice:** This discussion was written from historical,
+> retrospective outputs. See the
+> [2026-07-10 public erratum](docs/ERRATUM_2026-07-10.md) before interpreting
+> those results as evidence; future confirmation follows the
+> [frozen prospective protocol](docs/RESEARCH_PROTOCOL_V1.md).
+
 After getting the main results, I checked the kinds of cases where the model can still make large mistakes. This was useful because the overall MAE numbers do not show what the model actually misunderstands.
 
 The main pattern is simple: the model can capture broad signals, but it still does not understand the core trick or reasoning step of a programming problem.

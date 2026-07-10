@@ -198,7 +198,9 @@ def build_evidence_rows(outputs_dir: Path) -> list[dict[str, str]]:
     dataset_path = outputs_dir / "eda/summary/dataset_summary.json"
     analysis_path = outputs_dir / "analysis/summary/analysis_summary.json"
     ablation_path = outputs_dir / "ablations/summary/ablation_summary.json"
-    ranking_path = outputs_dir / "analysis/tables/model_ranking_test.csv"
+    ranking_path = (
+        outputs_dir / "analysis/tables/model_selection_validation_test.csv"
+    )
     improvements_path = outputs_dir / "analysis/tables/baseline_improvements.csv"
     drop_path = outputs_dir / "ablations/tables/ablation_drop_comparison.csv"
     split_path = Path("data/processed/splits/split_summary.json")
@@ -265,7 +267,8 @@ def build_evidence_rows(outputs_dir: Path) -> list[dict[str, str]]:
             "claim": "solved-count-only is the strongest simple baseline",
             "source": ranking_path.as_posix(),
             "evidence": (
-                "Check model_ranking_test.csv: solved_count_only_baseline ranks "
+                "Check model_selection_validation_test.csv: "
+                "solved_count_only_baseline ranks "
                 "ahead of index_only_baseline and tag_only_baseline."
             ),
         },
@@ -273,7 +276,7 @@ def build_evidence_rows(outputs_dir: Path) -> list[dict[str, str]]:
             "claim": "full models improve over solved-count-only",
             "source": improvements_path.as_posix(),
             "evidence": (
-                f"Best full models are {best_contest} and {best_forward}; "
+                f"Validation-selected full models are {best_contest} and {best_forward}; "
                 "baseline_improvements.csv reports improvement over "
                 "solved_count_only_baseline."
             ),
@@ -320,7 +323,7 @@ def _figure_metadata(filename: str) -> tuple[str, str, str]:
         ),
         "test_mae_by_model.png": (
             "Results",
-            "Test MAE by model for contest-grouped and forward-time evaluation.",
+            "Locked test MAE after validation-only model selection.",
             "main paper",
         ),
         "within_200_by_model.png": (
@@ -330,12 +333,12 @@ def _figure_metadata(filename: str) -> tuple[str, str, str]:
         ),
         "predicted_vs_actual_contest_grouped.png": (
             "Results",
-            "Predicted versus actual ratings for the best contest-grouped model.",
+            "Predicted versus actual ratings for the validation-selected contest-grouped model.",
             "appendix",
         ),
         "predicted_vs_actual_forward_time.png": (
             "Results",
-            "Predicted versus actual ratings for the best forward-time model.",
+            "Predicted versus actual ratings for the validation-selected forward-time model.",
             "appendix",
         ),
         "feature_drop_mae_change.png": (
@@ -414,7 +417,7 @@ def _table_metadata(filename: str) -> tuple[str, str, str]:
         ),
         "main_model_results.md": (
             "Results",
-            "Test-set model ranking by MAE for both evaluation strategies.",
+            "Validation-only model selection with locked test metrics for both strategies.",
             "main paper",
         ),
         "baseline_improvements.md": (
@@ -477,7 +480,8 @@ The current paper is a short skeleton. It records the main pipeline and headline
 - Current weakness: too compressed; it reads like a project summary.
 - Expand: add one sentence on motivation, one on data, one on evaluation, and one on the main empirical result.
 - Cite: no figure/table citation needed in the abstract.
-- Preserve numbers: 10,979 rated programming problems; rating range 800–3500; best-model MAE values from `model_ranking_test.csv`.
+- Preserve numbers only after governance review: use validation-selected test
+  values from `model_selection_validation_test.csv`.
 - Do not overclaim: avoid saying solved count measures intrinsic difficulty.
 
 ## Introduction
@@ -605,7 +609,7 @@ def build_final_outline_text() -> str:
 
 ## Results (900–1200 words)
 
-- Main model ranking by test MAE.
+- Main model selection by validation MAE, followed by locked test reporting.
 - Compare contest-grouped and forward-time results.
 - Discuss solved-count-only as strongest simple baseline.
 - Discuss full-model improvement over solved-count-only.

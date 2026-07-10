@@ -6,6 +6,7 @@ import sys
 from pathlib import Path
 
 import pandas as pd
+import pytest
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(PROJECT_ROOT / "src"))
@@ -32,11 +33,15 @@ def _metrics_frame() -> pd.DataFrame:
         "ridge_regression": 180.0,
         "random_forest_regressor": 80.0,
     }
+    valid_mae = {
+        **{model_name: mae + 10.0 for model_name, mae in test_mae.items()},
+        "random_forest_regressor": 150.0,
+    }
     for strategy in ("contest_grouped", "forward_time"):
         for model_name, mae in test_mae.items():
             for split_name, split_mae in (
                 ("train", train_mae[model_name]),
-                ("valid", mae + 10.0),
+                ("valid", valid_mae[model_name]),
                 ("test", mae),
             ):
                 rows.append(
@@ -88,13 +93,15 @@ def _feature_frame() -> pd.DataFrame:
     )
 
 
-def test_model_ranking_uses_test_mae_only() -> None:
-    """Ranking ignores train/valid metrics and orders by test MAE."""
+def test_model_ranking_uses_validation_mae_then_reports_test() -> None:
+    """A better test score cannot override validation-only selection."""
     ranking = analysis.build_model_ranking(_metrics_frame())
     contest = ranking.loc[ranking["strategy"].eq("contest_grouped")]
 
-    assert contest.iloc[0]["model_name"] == "ridge_regression"
-    assert contest.iloc[0]["rank_by_MAE"] == 1
+    assert contest.iloc[0]["model_name"] == "random_forest_regressor"
+    assert contest.iloc[0]["selection_rank"] == 1
+    assert contest.iloc[0]["validation_MAE"] == 150.0
+    assert contest.iloc[0]["MAE"] == 230.0
     solved = contest.loc[
         contest["model_name"].eq("solved_count_only_baseline")
     ].iloc[0]
@@ -104,8 +111,16 @@ def test_model_ranking_uses_test_mae_only() -> None:
     assert solved["MAE"] < tag["MAE"]
 
 
+def test_analysis_rejects_metrics_from_another_config() -> None:
+    """A current config fingerprint cannot be attached to stale metrics."""
+    metrics = _metrics_frame()
+    metrics["config_fingerprint_sha256"] = "a" * 64
+    with pytest.raises(analysis.AnalysisError, match="does not match"):
+        analysis.validate_metrics_config_fingerprint(metrics, "b" * 64)
+
+
 def test_baseline_improvement_calculation() -> None:
-    """Best full model improvement is computed from test MAE values."""
+    """The validation-selected full model is compared on locked test MAE."""
     ranking = analysis.build_model_ranking(_metrics_frame())
     improvements = analysis.build_baseline_improvements(ranking)
     row = improvements.loc[
@@ -113,9 +128,9 @@ def test_baseline_improvement_calculation() -> None:
         & improvements["comparison_model"].eq("solved_count_only_baseline")
     ].iloc[0]
 
-    assert row["best_full_model"] == "ridge_regression"
-    assert row["absolute_MAE_improvement"] == 40.0
-    assert round(row["percent_MAE_improvement"], 6) == 16.666667
+    assert row["best_full_model"] == "random_forest_regressor"
+    assert row["absolute_MAE_improvement"] == 10.0
+    assert round(row["percent_MAE_improvement"], 6) == 4.166667
 
 
 def test_top_error_extraction_enriches_features_and_sorts() -> None:
@@ -153,8 +168,20 @@ def test_run_analysis_writes_required_artifacts(tmp_path: Path) -> None:
     predictions_dir.mkdir()
     feature_path = tmp_path / "model_table.parquet"
     feature_columns_path = tmp_path / "feature_columns.json"
+    config_path = tmp_path / "experiment.yaml"
+    config_path.write_text(
+        (PROJECT_ROOT / "configs" / "experiment.yaml").read_text(
+            encoding="utf-8"
+        ),
+        encoding="utf-8",
+    )
 
     metrics = _metrics_frame()
+    metrics["config_fingerprint_sha256"] = (
+        analysis.experiment_config_fingerprint(
+            analysis.load_experiment_config(config_path)
+        )
+    )
     for strategy in ("contest_grouped", "forward_time"):
         metrics.loc[metrics["strategy"].eq(strategy)].to_csv(
             metrics_dir / f"{strategy}_metrics.csv",
@@ -173,9 +200,8 @@ def test_run_analysis_writes_required_artifacts(tmp_path: Path) -> None:
         ),
         encoding="utf-8",
     )
-
     paths = analysis.run_analysis(
-        config_path=tmp_path / "experiment.yaml",
+        config_path=config_path,
         feature_path=feature_path,
         feature_columns_path=feature_columns_path,
         contest_split_path=tmp_path / "contest.parquet",

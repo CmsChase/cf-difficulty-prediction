@@ -72,12 +72,19 @@ def test_split_outputs_and_summary(tmp_path: Path) -> None:
     input_path = tmp_path / "model_table.parquet"
     output_dir = tmp_path / "splits"
     log_path = tmp_path / "splits.log"
+    config_path = tmp_path / "experiment.yaml"
     _model_table().to_parquet(input_path, engine="pyarrow", index=False)
+    config_path.write_text(
+        (PROJECT_ROOT / "configs" / "experiment.yaml").read_text(
+            encoding="utf-8"
+        ),
+        encoding="utf-8",
+    )
 
     paths = splits.generate_splits(
         input_path,
         output_dir,
-        config_path=tmp_path / "missing.yaml",
+        config_path=config_path,
         log_path=log_path,
     )
 
@@ -90,6 +97,7 @@ def test_split_outputs_and_summary(tmp_path: Path) -> None:
         "split_name",
         "fold",
         "strategy",
+        "config_fingerprint_sha256",
     }
     assert set(grouped.columns) == required
     assert set(forward.columns) == required

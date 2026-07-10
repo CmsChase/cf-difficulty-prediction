@@ -28,6 +28,11 @@ from cf_diff.baselines import (
     make_preprocessed_estimator,
 )
 from cf_diff.features import write_json
+from cf_diff.model_selection import (
+    DEFAULT_METRIC_COLUMNS,
+    build_validation_ranked_report,
+    select_rank_one,
+)
 
 DEFAULT_CONFIG_PATH: Final[Path] = Path("configs/experiment.yaml")
 DEFAULT_PROCESSED_PATH: Final[Path] = Path(
@@ -568,6 +573,38 @@ def build_cold_start_comparison(test_metrics: pd.DataFrame) -> pd.DataFrame:
     ).reset_index(drop=True)
 
 
+def build_locked_robustness_report(metrics: pd.DataFrame) -> pd.DataFrame:
+    """Lock one algorithm on reference validation MAE for every feature set."""
+    reference = metrics.loc[
+        metrics["feature_set_name"].eq("full_api_reference")
+    ]
+    reference_ranking = build_validation_ranked_report(
+        reference,
+        group_columns=("strategy",),
+        candidate_columns=("model_name",),
+        metric_columns=DEFAULT_METRIC_COLUMNS,
+    )
+    selected_models = select_rank_one(reference_ranking).loc[
+        :, ["strategy", "model_name"]
+    ]
+    locked = metrics.merge(
+        selected_models,
+        on=["strategy", "model_name"],
+        how="inner",
+        validate="many_to_one",
+    )
+    report = build_validation_ranked_report(
+        locked,
+        group_columns=("strategy", "feature_set_name"),
+        candidate_columns=("model_name",),
+        metric_columns=DEFAULT_METRIC_COLUMNS,
+    )
+    return select_rank_one(report).sort_values(
+        ["strategy", "feature_set_name"],
+        kind="mergesort",
+    ).reset_index(drop=True)
+
+
 def build_age_normalized_comparison(test_metrics: pd.DataFrame) -> pd.DataFrame:
     """Create a test-metric table for age-normalized experiments."""
     wanted = set(AGE_NORMALIZED_FEATURE_SETS)
@@ -654,18 +691,22 @@ def _best_rows(
     test_metrics: pd.DataFrame,
     feature_sets: Sequence[str],
 ) -> dict[str, dict[str, object]]:
-    """Return the best test-MAE row by strategy for selected feature sets."""
+    """Select a feature set on validation and attach its test report."""
     result: dict[str, dict[str, object]] = {}
     subset = test_metrics.loc[test_metrics["feature_set_name"].isin(feature_sets)]
     for strategy, group in subset.groupby("strategy", sort=True):
+        selection_column = (
+            "validation_MAE" if "validation_MAE" in group.columns else "MAE"
+        )
         row = group.sort_values(
-            ["MAE", "model_name", "feature_set_name"],
+            [selection_column, "model_name", "feature_set_name"],
             kind="mergesort",
         ).iloc[0]
         result[strategy] = {
             "model_name": row["model_name"],
             "feature_set_name": row["feature_set_name"],
             "test_MAE": _finite_float(row["MAE"]),
+            "validation_MAE": _finite_float(row.get("validation_MAE")),
             "RMSE": _finite_float(row["RMSE"]),
             "R2": _finite_float(row["R2"]),
             "within_200": _finite_float(row["within_200"]),
@@ -712,11 +753,11 @@ def build_robustness_summary(
                 "partially adjust for unequal exposure time."
             ),
         },
-        "best_cold_start_model_by_strategy_test_MAE": _best_rows(
+        "validation_selected_cold_start_test_report": _best_rows(
             test_metrics,
             cold_feature_sets,
         ),
-        "best_age_normalized_model_by_strategy_test_MAE": _best_rows(
+        "validation_selected_age_normalized_test_report": _best_rows(
             test_metrics,
             age_feature_sets,
         ),
@@ -739,6 +780,10 @@ def build_robustness_summary(
                 "Full API reference results use solved statistics observed at "
                 "snapshot time and should not be described as cold-start "
                 "performance."
+            ),
+            (
+                "The algorithm is selected on full-API validation MAE and then "
+                "locked across feature-set comparisons on test data."
             ),
         ],
     }
@@ -888,12 +933,17 @@ def run_robustness(
             ["strategy", "model_name", "MAE", "feature_set_name"],
             kind="mergesort",
         ).reset_index(drop=True)
-        cold_start_comparison = build_cold_start_comparison(test_metrics)
-        age_normalized_comparison = build_age_normalized_comparison(test_metrics)
+        locked_test_report = build_locked_robustness_report(metrics)
+        cold_start_comparison = build_cold_start_comparison(locked_test_report)
+        age_normalized_comparison = build_age_normalized_comparison(
+            locked_test_report
+        )
         age_feature_summary = build_age_feature_summary(model_table)
-        raw_vs_age_solved = build_raw_vs_age_solved_comparison(test_metrics)
+        raw_vs_age_solved = build_raw_vs_age_solved_comparison(
+            locked_test_report
+        )
         summary = build_robustness_summary(
-            test_metrics,
+            locked_test_report,
             cold_start_comparison,
             raw_vs_age_solved,
             snapshot_time,
@@ -910,6 +960,9 @@ def run_robustness(
             "robustness_summary": summary_dir / "robustness_summary.json",
             "robustness_metrics_all": tables_dir / "robustness_metrics_all.csv",
             "robustness_metrics_test": tables_dir / "robustness_metrics_test.csv",
+            "locked_test_results": (
+                tables_dir / "robustness_validation_locked_test.csv"
+            ),
             "cold_start_comparison": tables_dir / "cold_start_comparison.csv",
             "age_normalized_comparison": (
                 tables_dir / "age_normalized_comparison.csv"
@@ -932,6 +985,7 @@ def run_robustness(
         write_json(paths["robustness_summary"], summary)
         metrics.to_csv(paths["robustness_metrics_all"], index=False)
         test_metrics.to_csv(paths["robustness_metrics_test"], index=False)
+        locked_test_report.to_csv(paths["locked_test_results"], index=False)
         cold_start_comparison.to_csv(paths["cold_start_comparison"], index=False)
         age_normalized_comparison.to_csv(
             paths["age_normalized_comparison"],
@@ -939,21 +993,21 @@ def run_robustness(
         )
         age_feature_summary.to_csv(paths["age_feature_summary"], index=False)
         plot_metric_comparison(
-            test_metrics,
+            locked_test_report,
             feature_sets=COLD_START_FEATURE_SETS,
             metric="MAE",
             title="Cold-start robustness: test MAE",
             path=paths["cold_start_mae_comparison"],
         )
         plot_metric_comparison(
-            test_metrics,
+            locked_test_report,
             feature_sets=COLD_START_FEATURE_SETS,
             metric="within_200",
             title="Cold-start robustness: within 200 rating points",
             path=paths["cold_start_within_200_comparison"],
         )
         plot_metric_comparison(
-            test_metrics,
+            locked_test_report,
             feature_sets=AGE_NORMALIZED_FEATURE_SETS,
             metric="MAE",
             title="Age-normalized solved-count robustness: test MAE",

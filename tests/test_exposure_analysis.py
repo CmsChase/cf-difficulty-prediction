@@ -209,6 +209,47 @@ def test_metric_calculation_by_age_bucket() -> None:
     )
 
 
+def test_exposure_summary_does_not_select_a_winner_from_test_mae() -> None:
+    """Test-partition age metrics remain descriptive, even with a clear MAE minimum."""
+    snapshot_time = pd.Timestamp("2024-01-01T00:00:00Z")
+    frame = exposure_analysis.add_exposure_features(_feature_table(), snapshot_time)
+    age_bucket_metrics = pd.DataFrame(
+        [
+            {
+                "strategy": "contest_grouped",
+                "model_name": "model_a",
+                "feature_set_name": "features_a",
+                "age_bucket": "0-1y",
+                "MAE": 1.0,
+            },
+            {
+                "strategy": "forward_time",
+                "model_name": "model_b",
+                "feature_set_name": "features_b",
+                "age_bucket": "0-1y",
+                "MAE": 999.0,
+            },
+        ]
+    )
+
+    summary = exposure_analysis.build_exposure_summary(
+        frame,
+        age_bucket_metrics,
+        pd.DataFrame(columns=["mismatch_group"]),
+        snapshot_time,
+    )
+
+    assert "main_finding_from_age_bucket_analysis" not in summary
+    descriptive = summary["descriptive_age_bucket_analysis"]
+    assert descriptive["analysis_role"] == "exploratory_descriptive_test_comparison"
+    assert descriptive["comparison_row_count"] == 2
+    assert descriptive["model_selection_performed"] is False
+    assert "strategy" not in descriptive
+    assert "model_name" not in descriptive
+    assert "feature_set_name" not in descriptive
+    assert "mean_age_bucket_MAE" not in descriptive
+
+
 def test_run_exposure_analysis_writes_outputs(tmp_path: Path) -> None:
     """Tiny smoke test writes every required exposure-analysis artifact."""
     feature_path = tmp_path / "model_table.parquet"
@@ -251,7 +292,12 @@ def test_run_exposure_analysis_writes_outputs(tmp_path: Path) -> None:
         engine="pyarrow",
         index=False,
     )
-    config_path.write_text("project:\n  random_seed: 7\n", encoding="utf-8")
+    config_path.write_text(
+        (PROJECT_ROOT / "configs" / "experiment.yaml")
+        .read_text(encoding="utf-8")
+        .replace("random_seed: 42", "random_seed: 7"),
+        encoding="utf-8",
+    )
 
     paths = exposure_analysis.run_exposure_analysis(
         config_path=config_path,

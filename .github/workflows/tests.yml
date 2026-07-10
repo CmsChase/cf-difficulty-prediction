@@ -15,6 +15,8 @@ jobs:
     steps:
       - name: Check out repository
         uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
 
       - name: Set up Python
         uses: actions/setup-python@v6
@@ -26,3 +28,10 @@ jobs:
 
       - name: Run tests
         run: PYTHONPATH=src python -m pytest -q
+
+      - name: Verify prospective ledger hash chains
+        run: PYTHONPATH=src python -m cf_diff.prospective_ledger verify
+
+      - name: Enforce append-only prospective ledgers
+        if: github.event_name == 'pull_request'
+        run: PYTHONPATH=src python -m cf_diff.prospective_ledger check-append-only --base-ref "origin/${{ github.base_ref }}"

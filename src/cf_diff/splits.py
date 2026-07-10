@@ -8,6 +8,7 @@ import logging
 import math
 import sys
 from collections.abc import Mapping, Sequence
+from dataclasses import asdict
 from pathlib import Path
 from typing import Final
 
@@ -20,6 +21,7 @@ from cf_diff.features import (
     FeatureError,
     JsonLogFormatter,
     SplitRatios,
+    experiment_config_fingerprint,
     load_experiment_config,
     write_json,
 )
@@ -307,6 +309,8 @@ def build_split_summary(
     overlap = _contest_overlap(grouped)
     return {
         "random_seed": config.random_seed,
+        "effective_config": asdict(config),
+        "config_fingerprint_sha256": experiment_config_fingerprint(config),
         "contest_grouped": {
             "row_counts": _split_counts(grouped),
             "contest_counts": _contest_counts(grouped),
@@ -345,6 +349,9 @@ def generate_splits(
             forward,
             config,
         )
+        config_fingerprint = experiment_config_fingerprint(config)
+        grouped["config_fingerprint_sha256"] = config_fingerprint
+        forward["config_fingerprint_sha256"] = config_fingerprint
         output_dir = output_dir.resolve()
         output_dir.mkdir(parents=True, exist_ok=True)
         paths = {

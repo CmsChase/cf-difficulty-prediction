@@ -3,6 +3,11 @@
 This is the two-minute map for `cf-difficulty-prediction`, a reproducible
 research project on predicting Codeforces problem difficulty.
 
+> **Start with the public erratum.** Historical tags `v1.0` through `v2.0`
+> used effective 70/15/15 splits despite different declared ratios, and several
+> winners were selected using test MAE. Historical numbers below are retained
+> as retrospective evidence, not an unseen confirmatory test.
+
 ## What the project studies
 
 The project predicts official Codeforces problem ratings from public data:
@@ -25,7 +30,7 @@ real pre-contest setting.
   add signal beyond metadata and text-light structure features, while remaining
   much weaker than deep semantic understanding.
 
-## Main results
+## Historical results (retrospective)
 
 - Final modeling data: 10,979 rated `PROGRAMMING` problems from 1,948 contests.
 - Rating range: 800 to 3500.
@@ -43,9 +48,11 @@ real pre-contest setting.
 
 ## Read these files first
 
+- [`docs/ERRATUM_2026-07-10.md`](docs/ERRATUM_2026-07-10.md) for the public correction.
+- [`docs/RESEARCH_PROTOCOL_V1.md`](docs/RESEARCH_PROTOCOL_V1.md) for the future blind test.
 - [`README.md`](README.md) for the project overview and commands.
 - [`paper/paper_v5_full_en_final.pdf`](paper/paper_v5_full_en_final.pdf) for
-  the main completed v5 paper.
+  the historical v5 paper.
 - [`paper/paper_v6_semantic_tfidf_final.pdf`](paper/paper_v6_semantic_tfidf_final.pdf)
   for the separate semantic TF-IDF extension paper.
 - [`docs/data_manifest.md`](docs/data_manifest.md) for what data and generated

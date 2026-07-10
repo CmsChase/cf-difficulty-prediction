@@ -34,7 +34,9 @@ CSV_INPUTS: Final[dict[str, Path]] = {
         "outputs/baselines/metrics/contest_grouped_metrics.csv"
     ),
     "forward_time_metrics": Path("outputs/baselines/metrics/forward_time_metrics.csv"),
-    "model_ranking_test": Path("outputs/analysis/tables/model_ranking_test.csv"),
+    "model_selection_report": Path(
+        "outputs/analysis/tables/model_selection_validation_test.csv"
+    ),
     "baseline_improvements": Path(
         "outputs/analysis/tables/baseline_improvements.csv"
     ),
@@ -277,7 +279,7 @@ def build_paper_tables(
     tables: dict[str, pd.DataFrame] = {
         "dataset_summary": build_dataset_summary_table(json_results),
         "main_model_results": _select_columns(
-            csv_results["model_ranking_test"],
+            csv_results["model_selection_report"],
             [
                 "strategy",
                 "model_name",
@@ -286,7 +288,8 @@ def build_paper_tables(
                 "R2",
                 "within_100",
                 "within_200",
-                "rank_by_MAE",
+                "validation_MAE",
+                "selection_rank",
             ],
         ),
         "baseline_improvements": csv_results["baseline_improvements"].copy(),
@@ -336,8 +339,8 @@ def copy_key_figures(
 
 
 def _ranking_line(csv_results: Mapping[str, pd.DataFrame], strategy: str) -> str:
-    """Summarize simple baseline ordering for one strategy."""
-    ranking = csv_results["model_ranking_test"]
+    """Summarize validation ordering and locked test reports for baselines."""
+    ranking = csv_results["model_selection_report"]
     subset = ranking.loc[
         ranking["strategy"].eq(strategy)
         & ranking["model_name"].isin(
@@ -347,9 +350,13 @@ def _ranking_line(csv_results: Mapping[str, pd.DataFrame], strategy: str) -> str
                 "tag_only_baseline",
             ]
         )
-    ].sort_values("MAE")
+    ].sort_values(["validation_MAE", "model_name"], kind="mergesort")
     return "; ".join(
-        f"{row.model_name}: MAE {row.MAE:.1f}" for row in subset.itertuples()
+        (
+            f"{row.model_name}: validation MAE {row.validation_MAE:.1f}, "
+            f"locked test MAE {row.MAE:.1f}"
+        )
+        for row in subset.itertuples()
     )
 
 
@@ -357,8 +364,8 @@ def _best_model_sentence(analysis: Mapping[str, object], strategy: str) -> str:
     """Return a factual best-model sentence fragment."""
     best = analysis["best_model_by_strategy"][strategy]
     return (
-        f"{best['model_name']} achieved the lowest test MAE "
-        f"({best['test_MAE']:.1f}) with within-200 accuracy "
+        f"{best['model_name']} was selected on validation MAE and achieved "
+        f"test MAE {best['test_MAE']:.1f} with within-200 accuracy "
         f"{best['within_200']:.3f}"
     )
 
@@ -446,8 +453,8 @@ def build_section_texts(
         ),
         "06_ablation": (
             "# Ablation Study\n\n"
-            f"The best overall ablation result is `{ablation['best_overall_ablation_by_test_MAE']['model_name']}` with `{ablation['best_overall_ablation_by_test_MAE']['feature_set_name']}` on `{ablation['best_overall_ablation_by_test_MAE']['strategy']}`, with test MAE {ablation['best_overall_ablation_by_test_MAE']['test_MAE']:.1f}. "
-            f"The one-group drop comparison shows that removing `{best_drop_group}` features produces the largest MAE increase. "
+            f"The retrospective one-group drop comparison descriptively shows that removing `{best_drop_group}` features produces the largest observed MAE increase. "
+            "This ordering is exploratory and is not an independently tested feature-selection result. "
             "This supports the central role of solved-count behavior while retaining the usefulness of metadata and tag information.\n\n"
             "![Ablation MAE contest grouped](figures/ablation_mae_by_feature_set_contest_grouped.png)\n\n"
             "![Ablation MAE forward time](figures/ablation_mae_by_feature_set_forward_time.png)\n\n"
@@ -508,8 +515,8 @@ def build_section_texts(
         ),
         "05_results": (
             "# 结果\n\n"
-            f"contest-grouped 测试集上，{analysis['best_model_by_strategy']['contest_grouped']['model_name']} 的测试 MAE 最低，为 {analysis['best_model_by_strategy']['contest_grouped']['test_MAE']:.1f}。"
-            f"forward-time 测试集上，{analysis['best_model_by_strategy']['forward_time']['model_name']} 的测试 MAE 最低，为 {analysis['best_model_by_strategy']['forward_time']['test_MAE']:.1f}。"
+            f"contest-grouped 中，{analysis['best_model_by_strategy']['contest_grouped']['model_name']} 由验证集 MAE 选定，其锁定测试 MAE 为 {analysis['best_model_by_strategy']['contest_grouped']['test_MAE']:.1f}。"
+            f"forward-time 中，{analysis['best_model_by_strategy']['forward_time']['model_name']} 由验证集 MAE 选定，其锁定测试 MAE 为 {analysis['best_model_by_strategy']['forward_time']['test_MAE']:.1f}。"
             "简单基线中，solved-count-only 强于 index-only 和 tag-only。"
             "完整模型仍优于 solved-count-only，说明其他结构化元数据仍有增益。"
             "forward-time 的训练/测试差距应被讨论为时间泛化差距或分布漂移，而不应自动解释为过拟合。\n\n"
@@ -517,7 +524,6 @@ def build_section_texts(
         ),
         "06_ablation": (
             "# 消融研究\n\n"
-            f"最佳整体消融结果来自 `{ablation['best_overall_ablation_by_test_MAE']['strategy']}` 设置下的 `{ablation['best_overall_ablation_by_test_MAE']['model_name']}`，特征集合为 `{ablation['best_overall_ablation_by_test_MAE']['feature_set_name']}`，测试 MAE 为 {ablation['best_overall_ablation_by_test_MAE']['test_MAE']:.1f}。"
             f"单组移除实验显示，移除 `{best_drop_group}` 特征造成最大的 MAE 上升。"
             "这与 solved-count 信号的重要性一致。\n\n"
             "![Feature drop MAE change](figures/feature_drop_mae_change.png)"
@@ -556,7 +562,14 @@ def write_sections_and_papers(
                 directories["sections"] / f"{section_name}_{language}.md",
                 language_sections[section_name],
             )
-        combined = "\n\n".join(language_sections[name] for name in SECTION_ORDER)
+        notice = (
+            "> **Research governance notice:** Historical held-out results are "
+            "retrospective, not confirmatory. See "
+            "`docs/ERRATUM_2026-07-10.md` and the frozen prospective protocol."
+        )
+        combined = notice + "\n\n" + "\n\n".join(
+            language_sections[name] for name in SECTION_ORDER
+        )
         _write_text(directories["paper"] / f"paper_{language}.md", combined)
 
 

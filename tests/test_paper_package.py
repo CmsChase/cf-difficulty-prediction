@@ -65,14 +65,7 @@ def _synthetic_json_results() -> dict[str, dict[str, object]]:
                 },
             }
         },
-        "ablation_summary": {
-            "best_overall_ablation_by_test_MAE": {
-                "strategy": "forward_time",
-                "model_name": "hist_gradient_boosting_regressor",
-                "feature_set_name": "all_api_features",
-                "test_MAE": 153.016985,
-            }
-        },
+        "ablation_summary": {},
     }
 
 
@@ -101,11 +94,12 @@ def _synthetic_csv_results() -> dict[str, pd.DataFrame]:
             "R2": [0.5, 0.4, 0.3, 0.6, 0.4, 0.2],
             "within_100": [0.2, 0.1, 0.1, 0.3, 0.1, 0.1],
             "within_200": [0.4, 0.2, 0.2, 0.5, 0.2, 0.2],
-            "rank_by_MAE": [1, 2, 3, 1, 2, 3],
+            "validation_MAE": [260.0, 400.0, 480.0, 250.0, 460.0, 570.0],
+            "selection_rank": [1, 2, 3, 1, 2, 3],
         }
     )
     return {
-        "model_ranking_test": ranking,
+        "model_selection_report": ranking,
         "baseline_improvements": pd.DataFrame(
             {
                 "strategy": ["contest_grouped"],
