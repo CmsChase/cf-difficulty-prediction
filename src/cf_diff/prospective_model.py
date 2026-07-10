@@ -239,7 +239,10 @@ def _read_table(path: Path) -> pd.DataFrame:
         raise ProspectiveModelError(f"Input table does not exist: {path}")
     suffix = path.suffix.lower()
     if suffix == ".csv":
-        return pd.read_csv(path)
+        return pd.read_csv(
+            path,
+            dtype={"contest_id": "string", "index": "string"},
+        )
     if suffix in {".parquet", ".pq"}:
         return pd.read_parquet(path, engine="pyarrow")
     raise ProspectiveModelError(f"Input table must be CSV or Parquet: {path}")
@@ -292,12 +295,9 @@ def _derive_index_features(frame: pd.DataFrame) -> pd.DataFrame:
     rank = letters.str[0].map(
         {letter: number for number, letter in enumerate("ABCDEFGHIJKLMNOPQRSTUVWXYZ", 1)}
     )
-    if rank.isna().any():
-        bad = indices.loc[rank.isna()].head(5).tolist()
-        raise ProspectiveModelError(
-            f"Cannot derive index_rank from problem indices: {bad}"
-        )
-    result["index_rank"] = rank.astype(float)
+    # Numeric-only problem indices occur in the historical corpus.  Match the
+    # canonical feature pipeline by encoding a missing alphabetic prefix as 0.
+    result["index_rank"] = rank.fillna(0.0).astype(float)
     result["index_number"] = pd.to_numeric(suffixes, errors="coerce").fillna(0.0)
     return result
 

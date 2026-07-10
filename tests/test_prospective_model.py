@@ -234,6 +234,29 @@ def test_predict_is_deterministic_derives_index_and_has_exact_schema(
     assert first["feature_row_sha256"].str.fullmatch(r"[0-9a-f]{64}").all()
 
 
+def test_numeric_only_problem_index_uses_canonical_zero_rank(tmp_path: Path) -> None:
+    """Legitimate Codeforces indices such as 01 remain eligible."""
+    model_path, manifest_path = _freeze(tmp_path)
+    frame = _prediction_input().iloc[[0]].copy()
+    frame["index"] = "01"
+    input_path = tmp_path / "numeric-index.csv"
+    output_path = tmp_path / "numeric-index-prediction.csv"
+    frame.to_csv(input_path, index=False)
+
+    predict_prospective(
+        protocol_path=PROTOCOL_PATH,
+        model_path=model_path,
+        manifest_path=manifest_path,
+        input_path=input_path,
+        output_path=output_path,
+        contest_start_utc="2026-07-12T01:00:00Z",
+        prediction_created_at_utc="2026-07-12T01:01:00Z",
+    )
+
+    result = pd.read_csv(output_path, dtype={"index": "string"})
+    assert result.loc[0, "index"] == "01"
+
+
 @pytest.mark.parametrize(
     "forbidden_column",
     [
