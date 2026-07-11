@@ -21,14 +21,34 @@
     ],
     "close_rule": "Close at the eligibility end timestamp, but do not run the confirmatory analysis unless both minimum sample thresholds are met; otherwise report the cohort as underpowered without extending it post hoc.",
     "operational_misses": "A contest with incomplete T0 capture or prediction is retained in the operational coverage denominator and recorded as missed; it is never silently dropped or partially predicted.",
-    "cohort_census_rule": "Starting five minutes after eligibility_end_utc, request the official Codeforces contest.list endpoint with gym=false. Use the first successful full snapshot, retrying every 30 minutes for at most 24 hours, and commit its SHA-256. Enumerate every non-gym contest whose scheduled start lies inside the eligibility window. Each must map exactly once to a locked prediction set, an operational miss, or a pre-specified exclusion. Any unmapped or multiply mapped contest is a cohort-integrity failure and blocks confirmatory analysis; if no snapshot succeeds by the deadline, report the cohort as unverifiable without choosing a later snapshot."
+    "cohort_census_rule": "Starting at the frozen census anchor, request the official Codeforces contest.list endpoint with gym=false and lang=en. Seal the first response that passes only the frozen transport and basic-structure predicate. Every in-window contest must map exactly once to a locked prediction set or an operational miss; there is no discretionary contest-exclusion category. Any unmapped, multiply mapped, or ledger-extra contest is a cohort-integrity failure and blocks confirmatory analysis.",
+    "contest_exclusion_codes": []
   },
   "prediction_timepoint": {
     "name": "T0",
     "definition": "After the public problem statement is available and before this project reads or joins the official problem rating.",
     "lock_deadline_minutes_after_contest_start": 30,
     "clock_policy": "Capture and prediction CLIs obtain UTC from the system clock and expose no timestamp override. They check before and after exclusive publication; an operation crossing the deadline retains no model input or prediction.",
-    "public_commitment": "The sanitized input hash, capture-sidecar hash, prediction hash, and append-only ledger event must reach the repository default branch before the T0 lock deadline. Record a GitHub Actions push-event run id, URL, and GitHub-created timestamp at or before the deadline as the external time witness; local Git author or committer dates are insufficient. A late or missing witness makes the whole contest an operational miss."
+    "public_commitment": "The sanitized input hash, capture-sidecar hash, prediction hash, and append-only ledger event must reach the repository default branch before the T0 lock deadline. Record a GitHub Actions push-event run id, URL, and GitHub-created timestamp at or before the deadline as the external time witness; local Git author or committer dates are insufficient. A late or missing witness makes the whole contest an operational miss.",
+    "coverage_event_witness": "A direct operational miss is also a base coverage event with the same lock deadline and must receive the same GitHub push-run witness. A missing or late miss witness remains publicly visible as untimely coverage rather than being silently backdated."
+  },
+  "external_timestamp": {
+    "provider": "github_actions_workflow_run",
+    "repository_id": 1280990637,
+    "repository_full_name": "CmsChase/cf-difficulty-prediction",
+    "default_branch": "main",
+    "workflow_name": "Prospective commitment witness",
+    "workflow_path": ".github/workflows/prospective-witness.yml",
+    "workflow_file_sha256": "16332a2d770c50c05eea46e1362f08edb982ee85d583be03e6cdbc2efa67aeed",
+    "trigger_event": "push",
+    "deadline_field": "created_at",
+    "required_status": "completed",
+    "required_conclusion": "success",
+    "required_run_attempt": 1,
+    "target_commit_must_be_default_branch_ancestor": true,
+    "commit_message_skip_directives_prohibited": true,
+    "local_git_timestamps_are_external_evidence": false,
+    "witness_record_policy": "Preserve the exact GitHub workflow-run API response and append a normalized witness event in a later commit. The GitHub-created timestamp of the first successful attempt for the immutable target commit is the deadline evidence; the workflow may finish and the normalized witness may be appended after the deadline."
   },
   "model_bundle": {
     "bundle_id": "text-light-ridge-v2",
@@ -105,25 +125,152 @@
     "rating_version_rule": "Per-contest reveal may append the first rating snapshot obtained no earlier than 72 hours for audit. For the confirmatory outcome, begin five minutes after eligibility_end_utc plus 72 hours and use the first successful full problemset.problems snapshot, retrying every 30 minutes for at most 24 hours; commit its SHA-256 before analysis. A rating absent from that snapshot is missing for the primary analysis. If no snapshot succeeds by the deadline, do not choose a later version or run confirmatory analysis. Later official revisions are descriptive amendments only.",
     "rounding": "Predictions remain floating point in the ledger; no rounding before metric calculation."
   },
+  "fixed_snapshot_windows": {
+    "cohort_census": {
+      "endpoint": "contest.list",
+      "query_params": {
+        "gym": "false",
+        "lang": "en"
+      },
+      "anchor_utc": "2027-03-01T00:04:59Z",
+      "deadline_utc": "2027-03-02T00:04:59Z",
+      "first_attempt_offset_seconds_after_eligibility_end": 300,
+      "retry_interval_seconds": 1800,
+      "window_duration_seconds": 86400,
+      "maximum_attempts": 48,
+      "attempt_start_grace_seconds": 60,
+      "request_timeout_seconds": 30,
+      "request_window": "half_open",
+      "missed_scheduled_attempt_policy": "invalidate_window",
+      "result_shape": "list",
+      "first_success_predicate": "HTTP success, parseable JSON, top-level status OK, list result, and unique integer contest ids with integer startTimeSeconds; cohort membership and prediction coverage are evaluated only after selection."
+    },
+    "confirmatory_outcome": {
+      "endpoint": "problemset.problems",
+      "query_params": {
+        "lang": "en"
+      },
+      "anchor_utc": "2027-03-04T00:04:59Z",
+      "deadline_utc": "2027-03-05T00:04:59Z",
+      "first_attempt_offset_seconds_after_eligibility_end": 259500,
+      "retry_interval_seconds": 1800,
+      "window_duration_seconds": 86400,
+      "maximum_attempts": 48,
+      "attempt_start_grace_seconds": 60,
+      "request_timeout_seconds": 30,
+      "request_window": "half_open",
+      "missed_scheduled_attempt_policy": "invalidate_window",
+      "result_shape": "object_with_problems_list",
+      "first_success_predicate": "HTTP success, parseable JSON, top-level status OK, object result with a problems list, and a unique positive-integer contestId plus non-empty index on every problem record; ratings, prediction matches, sample size, and cohort integrity are evaluated only after selection."
+    }
+  },
   "confirmatory_analysis": {
     "primary_estimand": "Mean paired absolute-error improvement: index-only comparator absolute error minus text-light model absolute error.",
     "primary_metric": "problem-level MAE difference",
-    "uncertainty": "Two-sided 95% percentile interval from 10000 contest-cluster bootstrap resamples.",
-    "bootstrap_seed": 20260710,
-    "bootstrap_rng": "NumPy Generator with PCG64 and bootstrap_seed; sort normalized contest_id values lexicographically before sampling.",
-    "bootstrap_resampling": "For each replicate, sample exactly the observed number of contests uniformly with replacement. Include every rated problem row from each selected contest once per draw, preserving cluster multiplicity, then compute the problem-level mean paired absolute-error improvement on the expanded rows.",
-    "interval_quantiles": "Use NumPy quantile probabilities 0.025 and 0.975 with method='linear' over the 10000 replicate means.",
+    "earliest_execution_utc": "2027-03-05T00:04:59Z",
+    "uncertainty": "Two-sided 95% percentile interval from the frozen contest-cluster bootstrap.",
+    "paired_improvement_definition": "abs(official_rating - comparator_prediction) - abs(official_rating - primary_prediction); positive values favor the primary model.",
+    "bootstrap": {
+      "resamples": 10000,
+      "seed": 20260710,
+      "bit_generator": "PCG64",
+      "contest_order": "normalized positive-integer contest_id values sorted by integer value ascending",
+      "draw_operation": "Call rng.integers(0, contest_count, size=(10000, contest_count), endpoint=False, dtype=np.int64) exactly once before any other random-number use.",
+      "replicate_statistic": "Expanded problem-level mean: include every paired row in each sampled contest once per cluster draw, preserving cluster multiplicity.",
+      "quantile_probabilities": [
+        0.025,
+        0.975
+      ],
+      "quantile_method": "linear"
+    },
     "analysis_input_validation": "Require unique contest_id,index prediction keys, one matching outcome at most, finite predictions, and no duplicate contest clusters. Exclude missing official ratings without imputation and report their count. Fail rather than silently repair malformed or duplicate rows.",
     "minimum_threshold_population": "The minimum 30 contests and 200 problems are counted only among distinct contests and paired problem rows that have both locked primary/comparator predictions and a rating in the single cohort-close outcome snapshot. Operational misses remain in the coverage denominator but do not count toward thresholds or bootstrap samples.",
-    "analysis_execution_gate": "The deterministic confirmatory-analysis implementation and fixture tests must be committed before protocol freeze. The command must refuse aggregate analysis before the fixed census and outcome snapshot windows complete, when any census contest is unmapped or multiply mapped, or when either minimum sample threshold is unmet.",
-    "success_rule": "The primary model is confirmatorily better only if the entire 95% interval for paired MAE improvement is above zero.",
-    "secondary_metrics": [
-      "primary-model problem-level MAE",
-      "contest-macro MAE",
-      "within-100 accuracy",
-      "within-200 accuracy",
-      "performance by pre-specified index-rank bands A-B, C-D, and E+"
-    ],
+    "analysis_execution_gate": "The deterministic confirmatory-analysis implementation and fixture tests must be committed before protocol freeze. Refuse all aggregate metrics and bootstrap work before earliest_execution_utc, unless the frozen census/outcome selections and mapping integrity all verify, or when fewer than 30 distinct paired contests or 200 paired rows remain.",
+    "minimum_distinct_paired_contests": 30,
+    "minimum_paired_problem_rows": 200,
+    "success_rule": {
+      "criterion": "lower_confidence_bound_strictly_greater_than_zero",
+      "boundary_value": 0,
+      "equality_is_success": false
+    },
+    "secondary_metrics": {
+      "problem_level_mae": "Arithmetic mean absolute error over all paired problem rows, reported separately for primary and comparator predictions.",
+      "contest_macro_mae": "Compute model MAE within each contest, then take the unweighted arithmetic mean across distinct contests.",
+      "within_100_accuracy": "Fraction of paired rows with absolute error less than or equal to 100.",
+      "within_200_accuracy": "Fraction of paired rows with absolute error less than or equal to 200.",
+      "index_rank_bands": {
+        "A-B": "normalized alphabetic index prefix A or B",
+        "C-D": "normalized alphabetic index prefix C or D",
+        "E+": "normalized alphabetic index prefix E or later",
+        "unclassified": "numeric-only or otherwise non-alphabetic index"
+      }
+    },
+    "implementation_freeze": {
+      "manifest_path": "prospective/model_freeze_manifest_v2.json",
+      "required_source_sha256_keys": [
+        "prospective_model",
+        "prospective_input",
+        "prospective_ledger",
+        "prospective_snapshot",
+        "prospective_cohort",
+        "prospective_analysis",
+        "statement_features",
+        "witness_workflow",
+        "tests_workflow",
+        "test_prospective_protocol",
+        "test_prospective_input",
+        "test_prospective_model",
+        "test_prospective_ledger",
+        "test_prospective_snapshot",
+        "test_prospective_cohort",
+        "test_prospective_analysis"
+      ],
+      "golden_fixture": {
+        "cluster_values": "For integer i from 0 through 29, cluster i contains the single value i + i*i/1000.",
+        "first_draw_first_15": [
+          23,
+          17,
+          20,
+          27,
+          15,
+          23,
+          22,
+          2,
+          18,
+          6,
+          12,
+          9,
+          18,
+          14,
+          22
+        ],
+        "first_five_replicate_mean_hex": [
+          "0x1.100a1a7cca9d9p+4",
+          "0x1.9e9c779a6b50bp+3",
+          "0x1.1749ba5e353f7p+4",
+          "0x1.bda8e448a2bf5p+3",
+          "0x1.b8f72015d867ep+3"
+        ],
+        "confidence_interval_hex": [
+          "0x1.741f08b5f8bc7p+3",
+          "0x1.1f956ced218f6p+4"
+        ],
+        "linear_quantile_arange_10000": [
+          249.975,
+          9749.025
+        ]
+      },
+      "production_cli_forbidden_overrides": [
+        "clock",
+        "seed",
+        "resamples",
+        "quantile probabilities",
+        "quantile method",
+        "endpoint",
+        "retry schedule",
+        "success boundary"
+      ]
+    },
     "multiplicity": "Only the paired MAE improvement is confirmatory; all secondary and subgroup results are descriptive.",
     "missing_outcomes": "Do not impute ratings. Report eligible predictions lacking a rating separately and exclude them from metric denominators.",
     "no_peeking_rule": "Do not calculate aggregate prospective performance or alter model, features, exclusions, endpoints, or thresholds before cohort close."
