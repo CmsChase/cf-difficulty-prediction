@@ -116,6 +116,74 @@ def _sha256_lf_text_file(path: Path) -> str:
     return _sha256_bytes(normalized)
 
 
+def _frozen_source_sha256() -> dict[str, str]:
+    """Hash every operational control and golden test frozen with v2."""
+
+    project_root = Path(__file__).resolve().parents[2]
+    paths = {
+        "prospective_model": Path(__file__),
+        "prospective_input": Path(__file__).with_name("prospective_input.py"),
+        "prospective_ledger": Path(__file__).with_name("prospective_ledger.py"),
+        "prospective_snapshot": Path(__file__).with_name("prospective_snapshot.py"),
+        "prospective_cohort": Path(__file__).with_name("prospective_cohort.py"),
+        "prospective_analysis": Path(__file__).with_name("prospective_analysis.py"),
+        "statement_features": Path(__file__).with_name("statement_features.py"),
+        "witness_workflow": project_root
+        / ".github"
+        / "workflows"
+        / "prospective-witness.yml",
+        "tests_workflow": project_root / ".github" / "workflows" / "tests.yml",
+        "test_prospective_protocol": project_root
+        / "tests"
+        / "test_prospective_protocol.py",
+        "test_prospective_input": project_root
+        / "tests"
+        / "test_prospective_input.py",
+        "test_prospective_model": project_root
+        / "tests"
+        / "test_prospective_model.py",
+        "test_prospective_ledger": project_root
+        / "tests"
+        / "test_prospective_ledger.py",
+        "test_prospective_snapshot": project_root
+        / "tests"
+        / "test_prospective_snapshot.py",
+        "test_prospective_cohort": project_root
+        / "tests"
+        / "test_prospective_cohort.py",
+        "test_prospective_analysis": project_root
+        / "tests"
+        / "test_prospective_analysis.py",
+    }
+    return {key: _sha256_lf_text_file(path) for key, path in paths.items()}
+
+
+def _validate_source_freeze_contract(
+    protocol: Mapping[str, object],
+    source_hashes: Mapping[str, str],
+) -> None:
+    analysis = _require_mapping(
+        protocol, "confirmatory_analysis", "protocol"
+    )
+    implementation = _require_mapping(
+        analysis, "implementation_freeze", "protocol.confirmatory_analysis"
+    )
+    if implementation.get("manifest_path") != DEFAULT_MANIFEST_PATH.as_posix():
+        raise ProspectiveModelError(
+            "Protocol analysis freeze manifest path is not canonical."
+        )
+    required_keys = implementation.get("required_source_sha256_keys")
+    if (
+        not isinstance(required_keys, list)
+        or any(not isinstance(key, str) for key in required_keys)
+        or len(required_keys) != len(set(required_keys))
+        or set(required_keys) != set(source_hashes)
+    ):
+        raise ProspectiveModelError(
+            "Protocol analysis source-hash keys do not match the freeze manifest."
+        )
+
+
 def _canonical_json_bytes(payload: object, *, pretty: bool = False) -> bytes:
     options: dict[str, object] = {
         "ensure_ascii": False,
@@ -754,6 +822,17 @@ def freeze_prospective_model(
         )
     starts = pd.to_numeric(model_table["start_time_seconds"], errors="coerce")
     eligible_starts = starts.loc[starts < cutoff.timestamp()]
+    source_sha256 = _frozen_source_sha256()
+    _validate_source_freeze_contract(protocol, source_sha256)
+    external_timestamp = _require_mapping(
+        protocol, "external_timestamp", "protocol"
+    )
+    if external_timestamp.get("workflow_file_sha256") != source_sha256.get(
+        "witness_workflow"
+    ):
+        raise ProspectiveModelError(
+            "Protocol workflow SHA-256 does not match the frozen witness workflow."
+        )
     manifest = {
         "schema_version": 1,
         "model_bundle_id": model_bundle_id,
@@ -771,15 +850,7 @@ def freeze_prospective_model(
             "path": requirements_path.as_posix(),
             "sha256": _sha256_lf_text_file(requirements_path),
         },
-        "source_sha256": {
-            "prospective_model": _sha256_lf_text_file(Path(__file__)),
-            "prospective_input": _sha256_lf_text_file(
-                Path(__file__).with_name("prospective_input.py")
-            ),
-            "statement_features": _sha256_lf_text_file(
-                Path(__file__).with_name("statement_features.py")
-            ),
-        },
+        "source_sha256": source_sha256,
         "training_cutoff_utc": _format_utc(cutoff),
         "training_row_count": int(len(training)),
         "training_start_time_seconds_min": float(eligible_starts.min()),
@@ -918,17 +989,14 @@ def _validate_freeze_manifest(
         "manifest.dependency_spec.sha256",
     )
     source_hashes = _require_mapping(manifest, "source_sha256", "manifest")
-    expected_source_keys = {
-        "prospective_model",
-        "prospective_input",
-        "statement_features",
-    }
+    expected_source_keys = set(_frozen_source_sha256())
     if set(source_hashes) != expected_source_keys:
         raise ProspectiveModelError(
             "Freeze manifest source_sha256 fields are incomplete."
         )
     for key, value in source_hashes.items():
         _require_sha256(value, f"manifest.source_sha256.{key}")
+    _validate_source_freeze_contract(protocol, source_hashes)
     row_count = manifest.get("training_row_count")
     if isinstance(row_count, bool) or not isinstance(row_count, int) or row_count < 1:
         raise ProspectiveModelError(
@@ -996,15 +1064,7 @@ def _load_verified_bundle(
         "source_sha256",
         "manifest",
     )
-    current_source_hashes = {
-        "prospective_model": _sha256_lf_text_file(Path(__file__)),
-        "prospective_input": _sha256_lf_text_file(
-            Path(__file__).with_name("prospective_input.py")
-        ),
-        "statement_features": _sha256_lf_text_file(
-            Path(__file__).with_name("statement_features.py")
-        ),
-    }
+    current_source_hashes = _frozen_source_sha256()
     if manifest_source_hashes != current_source_hashes:
         raise ProspectiveModelError(
             "Current prospective source files do not match the frozen manifest."

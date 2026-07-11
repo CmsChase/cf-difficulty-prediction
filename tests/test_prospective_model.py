@@ -366,7 +366,20 @@ def test_freeze_writes_locked_json_and_full_provenance(tmp_path: Path) -> None:
     assert set(manifest["source_sha256"]) == {
         "prospective_model",
         "prospective_input",
+        "prospective_ledger",
+        "prospective_snapshot",
+        "prospective_cohort",
+        "prospective_analysis",
         "statement_features",
+        "witness_workflow",
+        "tests_workflow",
+        "test_prospective_protocol",
+        "test_prospective_input",
+        "test_prospective_model",
+        "test_prospective_ledger",
+        "test_prospective_snapshot",
+        "test_prospective_cohort",
+        "test_prospective_analysis",
     }
     verified = verify_frozen_model(
         protocol_path=protocol_path,
