@@ -137,8 +137,12 @@ before row values and cryptographically binds predictions to that sidecar,
 input, frozen model, and freeze manifest.
 
 See [`prospective/README.md`](prospective/README.md) for the guarded command
-chain and the remaining freeze gates. Real enrollment stays disabled until the
-append-only ledger and public timestamp workflow are merged and dry-run.
+chain and the remaining freeze gates. The next operations change adds
+append-only event chains, a GitHub push-time witness, fixed first-success API
+windows, cohort-integrity mapping, and deterministic confirmatory analysis.
+Real enrollment stays disabled until those controls are merged, independently
+reviewed, and dry-run from a clean `main` checkout before a separate protocol
+and model freeze.
 
 There are two different reproducibility paths:
 

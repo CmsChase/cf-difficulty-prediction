@@ -13,7 +13,7 @@ The prospective workflow is under pre-enrollment construction.
 No prospective cohort is active and no v2 model is frozen yet. The capture and
 prediction commands intentionally reject the draft protocol.
 
-## Planned command chain after freeze
+## Guarded command chain after freeze
 
 Capture a complete contest directly from public statement pages:
 
@@ -41,9 +41,11 @@ python -m cf_diff.prospective_model predict `
   --output prospective/predictions/3000_predictions.csv
 ```
 
-Until the ledger, reveal, and frozen confirmatory-analysis changes are merged,
-these commands are for synthetic dry runs only. Do not use them to enroll a
-real contest.
+The operations change now supplies the proposed append-only ledger, public
+GitHub witness, fixed snapshots, cohort mapping, and deterministic analysis.
+Until that change and its prerequisites merge, pass independent review, and
+complete a clean-`main` synthetic dry run, these commands remain test material.
+Do not use them to enroll a real contest.
 
 Raw HTML is retained locally for capture audit and ignored by Git. Sanitized
 feature inputs, sidecars, frozen model artifacts, and later ledger events are
@@ -53,3 +55,6 @@ The predictor re-hashes every local raw statement file before accepting its
 sidecar. Public hashes make the frozen bundle and predictions auditable, but
 the historical training tables remain local; the bundle is not independently
 rebuildable from the public repository alone.
+
+The complete post-freeze sequence and failure rules are in
+[`docs/PROSPECTIVE_OPERATIONS_RUNBOOK.md`](../docs/PROSPECTIVE_OPERATIONS_RUNBOOK.md).

@@ -22,6 +22,13 @@ confirmatory estimand. The planned interval is a 95% percentile interval from
 10,000 contest-cluster bootstrap resamples with the pre-specified seed in the
 machine-readable protocol. Secondary metrics and index bands are descriptive.
 
+The machine-readable protocol now fixes the implementation details that could
+otherwise create analyst discretion: PCG64, one 10,000-by-contest draw, seed
+`20260710`, numerically sorted contest-id clusters, expanded problem-level
+cluster multiplicity, linear 2.5%/97.5% quantiles, and a strict lower-bound
+greater-than-zero success rule. The command must stop before calculating any
+aggregate when an integrity, time, or sample-size gate fails.
+
 ## T0 isolation boundary
 
 For each contest, the capture command accepts only:
@@ -52,6 +59,13 @@ The sanitized input, sidecar, prediction, and ledger commitment must also reach
 the default branch before the deadline. A GitHub Actions push-event run URL,
 id, and GitHub-created timestamp are the external witness; local commit dates
 do not suffice.
+The witness policy is bound to repository id `1280990637`, branch `main`, the
+dedicated `prospective-witness.yml` workflow, its SHA-256, a push event, and
+run attempt 1. The workflow-run REST response is retained as immutable public
+evidence. Its GitHub `created_at` value is the deadline clock; a local timestamp
+or Git commit date is never substituted.
+Direct operational misses use the same base-event deadline and push witness;
+missing or late miss evidence remains visibly untimely rather than backdated.
 The later reveal step also verifies the operator-entered scheduled start and
 complete index list. A mismatch invalidates the whole contest prediction set;
 rows are never added or corrected after T0.
@@ -87,6 +101,10 @@ future cohort.
 The model manifest records the full source commit, training-input hashes,
 dependency-spec hash, key runtime and numerical-library versions, training
 cutoff, and model hash.
+It also hashes the capture, prediction, ledger, snapshot, cohort, and analysis
+modules; both workflows; and all prospective protocol/model/operation tests.
+The protocol stores the PCG64 golden draw, replicate, interval, and quantile
+values checked by those tests.
 The estimator locks Ridge alpha, intercept behavior, and the deterministic SVD
 solver.
 
@@ -103,22 +121,27 @@ are append-only audit records; the confirmatory outcome uses the first
 successful hashed API snapshot in the fixed post-close window, and missing
 ratings are not filled from later polls.
 
-Silent whole-contest omission is checked independently at cohort close. Five
-minutes after the eligibility window ends, the workflow requests the official
-non-gym contest list and uses the first successful full snapshot, retrying at
-fixed 30-minute intervals for no more than 24 hours. Every in-window contest
-must map exactly once to predictions, an operational miss, or a pre-specified
-exclusion; otherwise confirmatory analysis is blocked.
+Silent whole-contest omission is checked independently at cohort close. The
+census window is the half-open interval from `2027-03-01T00:04:59Z` through
+`2027-03-02T00:04:59Z`. It has exactly 48 scheduled requests, at 30-minute
+intervals with no request at the closing boundary. The first response that
+passes only the frozen transport and basic-structure predicate is sealed,
+even if its later mapping, ratings, or sample size are unfavorable. Every
+in-window contest must map exactly once to predictions or an operational miss;
+there is no discretionary contest-exclusion bucket.
 
 The confirmatory rating snapshot also cannot be chosen opportunistically. Its
-first attempt is fixed at five minutes after cohort close plus 72 hours, with
-30-minute retries for at most 24 hours. The first success is hashed and used.
-If none succeeds, the confirmatory analysis is not run rather than waiting for
-a preferred later version.
+half-open window is `2027-03-04T00:04:59Z` through
+`2027-03-05T00:04:59Z`, again with exactly 48 scheduled requests. The first
+structure-valid response is retained even when ratings are missing. A missed
+scheduled slot invalidates the window; an all-failure window cannot be replaced
+with a later snapshot. Confirmatory analysis cannot begin before the latter
+deadline.
 
 ## Current scope boundary
 
-This branch prepares capture, model freezing, prediction, and documentation.
-It does not open the cohort. Append-only prediction/outcome ledgers, reveal
-separation, public timestamp checks, and the final operational runbook belong
-to the next sequential change.
+This change prepares the append-only commitment/observation chains, public
+timestamp validation, fixed snapshot acquisition, cohort-integrity mapping,
+and deterministic confirmatory analysis. It still does not open the cohort or
+freeze a model. Those actions require merged prerequisites, a clean-main
+synthetic dry run, independent review, and a separate explicit freeze commit.
