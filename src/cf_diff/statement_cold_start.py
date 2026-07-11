@@ -30,6 +30,11 @@ from cf_diff.baselines import (
     make_preprocessed_estimator,
 )
 from cf_diff.features import write_json
+from cf_diff.model_selection import (
+    DEFAULT_METRIC_COLUMNS,
+    build_validation_ranked_report,
+    select_rank_one,
+)
 from cf_diff.statement_features import (
     STATEMENT_FEATURE_COLUMNS as TEXT_LIGHT_FEATURE_COLUMNS,
 )
@@ -480,20 +485,15 @@ def evaluate_statement_cold_start_strategy(
     ).reset_index(drop=True)
 
 
-def build_best_by_setting(test_metrics: pd.DataFrame) -> pd.DataFrame:
-    """Select best test-MAE model per strategy and feature setting."""
-    rows: list[pd.Series] = []
-    for (strategy, setting), group in test_metrics.groupby(
-        ["strategy", "feature_setting"],
-        sort=True,
-    ):
-        del strategy, setting
-        rows.append(
-            group.sort_values(["MAE", "model_name"], kind="mergesort").iloc[0]
-        )
-    if not rows:
-        return pd.DataFrame()
-    return pd.DataFrame(rows).sort_values(
+def build_best_by_setting(metrics: pd.DataFrame) -> pd.DataFrame:
+    """Select each setting's model on validation and report test metrics."""
+    ranked = build_validation_ranked_report(
+        metrics,
+        group_columns=("strategy", "feature_setting"),
+        candidate_columns=("model_name",),
+        metric_columns=DEFAULT_METRIC_COLUMNS,
+    )
+    return select_rank_one(ranked).sort_values(
         ["strategy", "feature_setting"],
         kind="mergesort",
     ).reset_index(drop=True)
@@ -599,7 +599,7 @@ def build_summary(
         "feature_counts": {
             setting: int(len(columns)) for setting, columns in feature_sets.items()
         },
-        "best_model_per_setting_and_split": best_records,
+        "validation_selected_model_test_report": best_records,
         "improvement_of_metadata_plus_text_light_over_metadata_only": comparisons[
             "metadata_plus_text_light_over_metadata_only"
         ],
@@ -624,6 +624,10 @@ def build_summary(
             (
                 "Missing-statement rows are handled by imputation rather than "
                 "being treated as successful parsed statements."
+            ),
+            (
+                "Model choice is made only on validation MAE; test metrics are "
+                "reported after that choice is fixed."
             ),
         ],
     }
@@ -775,7 +779,7 @@ def run_statement_cold_start(
             kind="mergesort",
         )
         test_metrics = metrics.loc[metrics["split_name"].eq("test")].copy()
-        best_by_setting = build_best_by_setting(test_metrics)
+        best_by_setting = build_best_by_setting(metrics)
         summary = build_summary(
             join_counts=join_counts,
             experiment_table=experiment_table,

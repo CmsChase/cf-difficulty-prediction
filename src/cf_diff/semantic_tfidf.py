@@ -4,7 +4,7 @@ This module evaluates classical bag-of-words statement text features on top of
 the existing processed Codeforces dataset. It reads local artifacts only and
 does not modify v5 outputs or save trained model files. The full_api_reference
 setting in this module uses the same ridge-based comparison setup as the TF-IDF
-experiment and should not replace the canonical v5 full API benchmark.
+experiment and should not replace the historical v5 full API benchmark.
 """
 
 from __future__ import annotations
@@ -36,6 +36,11 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt  # noqa: E402
 
 from cf_diff import RANDOM_SEED
+from cf_diff.model_selection import (
+    DEFAULT_METRIC_COLUMNS,
+    build_validation_ranked_report,
+    select_rank_one,
+)
 from cf_diff.statement_cold_start import has_solved_leakage
 from cf_diff.statement_features import STATEMENT_FEATURE_COLUMNS
 
@@ -113,7 +118,7 @@ CONSERVATIVE_NOTES: Final[tuple[str, ...]] = (
     "Statement text extraction is approximate.",
     "Cold-start settings exclude solved-count behavior.",
     "Tags may still be post-contest metadata, so this is metadata/statement cold-start rather than strict pre-contest prediction.",
-    "The full_api_reference setting in this module uses the same ridge-based comparison setup as the TF-IDF experiment and should not replace the canonical v5 full API benchmark.",
+    "The full_api_reference setting in this module uses the same ridge-based comparison setup as the TF-IDF experiment and should not replace the historical v5 full API benchmark.",
     "This module does not modify v5 results.",
 )
 
@@ -715,23 +720,24 @@ def evaluate_strategy(
             text_column=text_column,
             tfidf_config=tfidf_config,
         )
-        test_mask = joined["split_name"].eq("test")
-        metrics = compute_regression_metrics(
-            joined.loc[test_mask, TARGET_COLUMN],
-            predictions.loc[test_mask],
-        )
-        rows.append(
-            {
-                "strategy": strategy,
-                "split_name": "test",
-                "feature_setting": setting,
-                "model_name": "ridge_regression",
-                "feature_count": int(len(feature_columns)),
-                "uses_tfidf": bool(setting in TFIDF_SETTINGS),
-                "row_count": int(test_mask.sum()),
-                **metrics,
-            }
-        )
+        for split_name in ("train", "valid", "test"):
+            split_mask = joined["split_name"].eq(split_name)
+            metrics = compute_regression_metrics(
+                joined.loc[split_mask, TARGET_COLUMN],
+                predictions.loc[split_mask],
+            )
+            rows.append(
+                {
+                    "strategy": strategy,
+                    "split_name": split_name,
+                    "feature_setting": setting,
+                    "model_name": "ridge_regression",
+                    "feature_count": int(len(feature_columns)),
+                    "uses_tfidf": bool(setting in TFIDF_SETTINGS),
+                    "row_count": int(split_mask.sum()),
+                    **metrics,
+                }
+            )
         if prediction_dir is not None:
             write_predictions(
                 joined,
@@ -775,14 +781,23 @@ def write_predictions(
 
 
 def best_by_strategy(metrics: pd.DataFrame) -> dict[str, dict[str, object]]:
-    """Return the best test MAE row for each strategy."""
-
+    """Select a feature setting on validation and report its test metrics."""
+    ranked = build_validation_ranked_report(
+        metrics,
+        group_columns=("strategy",),
+        candidate_columns=("feature_setting", "model_name"),
+        metric_columns=DEFAULT_METRIC_COLUMNS,
+    )
+    selected = select_rank_one(ranked)
     result: dict[str, dict[str, object]] = {}
-    for strategy, group in metrics.groupby("strategy", sort=True):
-        best = group.sort_values(["MAE", "feature_setting"], kind="mergesort").iloc[0]
+    for strategy, group in selected.groupby("strategy", sort=True):
+        best = group.iloc[0]
         result[str(strategy)] = {
             "feature_setting": str(best["feature_setting"]),
             "model_name": str(best["model_name"]),
+            "selection_split": "valid",
+            "validation_MAE": float(best["validation_MAE"]),
+            "report_split": "test",
             "MAE": float(best["MAE"]),
             "RMSE": float(best["RMSE"]),
             "within_200": float(best["within_200"]),
@@ -791,16 +806,14 @@ def best_by_strategy(metrics: pd.DataFrame) -> dict[str, dict[str, object]]:
 
 
 def build_best_by_setting_table(metrics: pd.DataFrame) -> pd.DataFrame:
-    """Build a deterministic best-by-setting table."""
-
-    rows: list[pd.Series] = []
-    for (strategy, setting), group in metrics.groupby(
-        ["strategy", "feature_setting"],
-        sort=True,
-    ):
-        del strategy, setting
-        rows.append(group.sort_values(["MAE", "model_name"], kind="mergesort").iloc[0])
-    output = pd.DataFrame(rows).sort_values(
+    """Attach validation evidence to each pre-specified setting's test row."""
+    ranked = build_validation_ranked_report(
+        metrics,
+        group_columns=("strategy", "feature_setting"),
+        candidate_columns=("model_name",),
+        metric_columns=DEFAULT_METRIC_COLUMNS,
+    )
+    output = select_rank_one(ranked).sort_values(
         ["strategy", "feature_setting"],
         kind="mergesort",
     )
@@ -851,6 +864,7 @@ def build_summary(
     """Build the machine-readable experiment summary."""
 
     availability = text_availability_summary(experiment_table, text_column)
+    locked_test_report = build_best_by_setting_table(metrics)
     return {
         "created_at_utc": datetime.now(timezone.utc).isoformat(timespec="seconds"),
         "input_model_table_rows": int(join_counts["input_model_table_rows"]),
@@ -863,14 +877,14 @@ def build_summary(
         "tfidf_ngram_range": list(tfidf_config.ngram_range),
         "strategies": list(STRATEGIES),
         "settings": list(FEATURE_SETTINGS),
-        "best_by_strategy": best_by_strategy(metrics),
+        "validation_selected_setting_test_report": best_by_strategy(metrics),
         "improvement_of_metadata_plus_tfidf_over_metadata_only": improvement_table(
-            metrics,
+            locked_test_report,
             baseline_setting="metadata_only",
             comparison_setting="metadata_plus_tfidf",
         ),
         "improvement_of_metadata_plus_text_light_plus_tfidf_over_metadata_plus_text_light": improvement_table(
-            metrics,
+            locked_test_report,
             baseline_setting="metadata_plus_text_light",
             comparison_setting="metadata_plus_text_light_plus_tfidf",
         ),
@@ -892,9 +906,12 @@ def plot_mae_by_setting(metrics: pd.DataFrame, path: Path) -> None:
     """Create a bar chart comparing test MAE by setting and strategy."""
 
     path.parent.mkdir(parents=True, exist_ok=True)
-    pivot = metrics.pivot(index="feature_setting", columns="strategy", values="MAE").loc[
-        list(FEATURE_SETTINGS)
-    ]
+    test_metrics = metrics.loc[metrics["split_name"].eq("test")]
+    pivot = test_metrics.pivot(
+        index="feature_setting",
+        columns="strategy",
+        values="MAE",
+    ).loc[list(FEATURE_SETTINGS)]
     ax = pivot.plot(kind="bar", figsize=(13, 6))
     ax.set_title("Semantic TF-IDF cold-start test MAE by setting")
     ax.set_xlabel("Feature setting")
