@@ -45,6 +45,16 @@ immediate failure. After schema approval it loads only the exact allowlist.
 Every capture and prediction output uses exclusive creation. One failed or
 unparsed statement invalidates the whole contest input; partial prediction is
 prohibited. The later ledger will record that contest as an operational miss.
+Neither operational CLI accepts a caller-supplied capture or prediction time.
+Both use the system UTC clock and check it before and after publication; a
+deadline crossing removes the model input or prediction.
+The sanitized input, sidecar, prediction, and ledger commitment must also reach
+the default branch before the deadline. A GitHub Actions push-event run URL,
+id, and GitHub-created timestamp are the external witness; local commit dates
+do not suffice.
+The later reveal step also verifies the operator-entered scheduled start and
+complete index list. A mismatch invalidates the whole contest prediction set;
+rows are never added or corrected after T0.
 
 ## Freeze gates
 
@@ -55,7 +65,10 @@ The protocol may change from draft to frozen only after all of these are true:
 3. a synthetic dry run completes capture → prediction → verification without
    reading a metadata table;
 4. the append-only ledger and public timestamp workflow are ready;
-5. the tentative start still leaves a review buffer.
+5. deterministic confirmatory-analysis code and fixture tests are frozen,
+   including clustered resampling, RNG, quantile, missingness, and duplicate
+   handling, and the command refuses to run before cohort close;
+6. the tentative start still leaves a review buffer.
 
 If a gate is not complete in time, the start date must move forward before
 freezing. It must never be backdated.
@@ -67,10 +80,41 @@ Freezing is a two-commit operation:
 2. from that clean commit, generate the JSON model bundle and manifest, verify
    them, and commit the artifacts before the first eligible contest.
 
+The protocol becomes immutable in the first commit. Any later substantive
+change, even before the first prediction, requires a new protocol ID and a new
+future cohort.
+
 The model manifest records the full source commit, training-input hashes,
-dependency-spec hash, exact runtime versions, training cutoff, and model hash.
+dependency-spec hash, key runtime and numerical-library versions, training
+cutoff, and model hash.
 The estimator locks Ridge alpha, intercept behavior, and the deterministic SVD
 solver.
+
+These records make the committed model and future predictions hash-auditable.
+They do not make the model independently rebuildable from this repository:
+the historical training snapshots are local and only their hashes are public,
+and transitive numerical-library details may differ across systems.
+
+The 30-contest and 200-problem thresholds count only contests and problems with
+locked paired predictions and a rating in the fixed post-close outcome
+snapshot. Operational misses are reported in the coverage denominator but do
+not count toward the thresholds or bootstrap. Earlier 72-hour reveal snapshots
+are append-only audit records; the confirmatory outcome uses the first
+successful hashed API snapshot in the fixed post-close window, and missing
+ratings are not filled from later polls.
+
+Silent whole-contest omission is checked independently at cohort close. Five
+minutes after the eligibility window ends, the workflow requests the official
+non-gym contest list and uses the first successful full snapshot, retrying at
+fixed 30-minute intervals for no more than 24 hours. Every in-window contest
+must map exactly once to predictions, an operational miss, or a pre-specified
+exclusion; otherwise confirmatory analysis is blocked.
+
+The confirmatory rating snapshot also cannot be chosen opportunistically. Its
+first attempt is fixed at five minutes after cohort close plus 72 hours, with
+30-minute retries for at most 24 hours. The first success is hashed and used.
+If none succeeds, the confirmatory analysis is not run rather than waiting for
+a preferred later version.
 
 ## Current scope boundary
 

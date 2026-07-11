@@ -104,8 +104,10 @@ outputs/paper_tables/    Small committed paper-ready CSV tables
 prospective/             Pre-enrollment protocol and future public evidence
 ```
 
-Large generated data, raw API snapshots, cached HTML pages, trained model
-artifacts, logs, and experiment outputs are intentionally not committed.
+Large generated data, raw API snapshots, cached HTML pages, historical trained
+model artifacts, logs, and experiment outputs are intentionally not committed.
+The future prospective JSON bundle and freeze manifest are explicit exceptions:
+once frozen, they will be small committed evidence artifacts.
 
 ## Configuration and historical interpretation
 

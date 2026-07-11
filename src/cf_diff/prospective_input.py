@@ -16,7 +16,11 @@ from typing import Callable, Final, Sequence
 
 import pandas as pd
 
-from cf_diff.prospective_model import ProspectiveModelError, load_frozen_protocol
+from cf_diff.prospective_model import (
+    ProspectiveModelError,
+    _sha256_lf_text_file,
+    load_frozen_protocol,
+)
 from cf_diff.statement_features import (
     STATEMENT_FEATURE_COLUMNS,
     USER_AGENT,
@@ -34,6 +38,11 @@ DEFAULT_TIMEOUT_SECONDS: Final[int] = 20
 DEFAULT_RETRIES: Final[int] = 2
 _DERIVED_INDEX_COLUMNS: Final[frozenset[str]] = frozenset(
     {"index_rank", "index_number"}
+)
+_DECODE_POLICY: Final[str] = "utf-8_errors_replace"
+_PROTOCOL_DECODE_POLICY: Final[str] = (
+    "Decode raw statement bytes as UTF-8 with replacement for invalid byte "
+    "sequences; response Content-Type and final redirect URL are audit-only fields."
 )
 
 
@@ -149,6 +158,14 @@ def _protocol_feature_columns(protocol: dict[str, object]) -> list[str]:
             "Protocol primary features must begin with the two internally derived "
             "index fields followed by the frozen statement feature allowlist."
         )
+    capture = protocol.get("input_capture")
+    if (
+        not isinstance(capture, dict)
+        or capture.get("decode_policy") != _PROTOCOL_DECODE_POLICY
+    ):
+        raise ProspectiveInputError(
+            "Protocol input_capture.decode_policy does not match the frozen UTF-8 policy."
+        )
     return statement_columns
 
 
@@ -229,14 +246,17 @@ def _fetch_fresh_problem_page(
                 raw = response.read()
                 status = getattr(response, "status", None)
                 content_type = response.headers.get("Content-Type")
+                final_url = response.geturl()
             raw_path.parent.mkdir(parents=True, exist_ok=True)
             with raw_path.open("xb") as handle:
                 handle.write(raw)
             return FetchResult(
                 status="fetched",
                 cache_path=raw_path,
-                html_text=_decode_bytes(raw, content_type),
+                html_text=_decode_bytes(raw, "text/html; charset=utf-8"),
                 http_status=status,
+                content_type=content_type,
+                final_url=final_url,
             )
         except urllib.error.HTTPError as error:
             last_error = f"HTTP {error.code}: {error.reason}"
@@ -269,13 +289,19 @@ def _write_sidecar_exclusive(path: Path, payload: dict[str, object]) -> None:
         )
         + "\n"
     )
+    created = False
     try:
         with path.open("x", encoding="utf-8", newline="\n") as handle:
+            created = True
             handle.write(serialized)
     except FileExistsError as error:
         raise ProspectiveInputError(
             f"Capture sidecar already exists and will not be overwritten: {path}"
         ) from error
+    except Exception:
+        if created and path.exists():
+            path.unlink()
+        raise
 
 
 def _not_attempted_record(index: str, contest_id: str, reason: str) -> dict[str, object]:
@@ -288,7 +314,10 @@ def _not_attempted_record(index: str, contest_id: str, reason: str) -> dict[str,
         "fetch_status": "not_attempted",
         "parse_status": "not_parsed",
         "raw_html_sha256": None,
+        "decoded_html_sha256": None,
         "raw_path": None,
+        "response_content_type": None,
+        "final_url": None,
         "error": reason,
     }
 
@@ -408,11 +437,32 @@ def capture_prospective_input(
         parse_status = "not_parsed"
         error_text = fetch_result.error
         raw_hash = _sha256_file(raw_path) if raw_path.is_file() else None
+        decoded_html_hash = (
+            _sha256_bytes(fetch_result.html_text.encode("utf-8"))
+            if fetch_result.html_text is not None
+            else None
+        )
         feature_values: dict[str, object] | None = None
         if fetch_completed > deadline:
             error_text = "Fetch completed after the frozen T0 lock deadline."
         elif fetch_result.status != "fetched" or fetch_result.html_text is None:
             error_text = error_text or "Problem page was not freshly fetched."
+        elif fetch_result.http_status != 200:
+            error_text = (
+                "Problem page fetch did not return HTTP 200: "
+                f"{fetch_result.http_status!r}."
+            )
+        elif (
+            not raw_path.is_file()
+            or raw_hash is None
+            or fetch_result.cache_path.resolve() != raw_path.resolve()
+        ):
+            error_text = "Fresh raw statement capture is missing or misplaced."
+        elif fetch_result.html_text != _decode_bytes(
+            raw_path.read_bytes(),
+            "text/html; charset=utf-8",
+        ):
+            error_text = "Decoded statement does not match the frozen UTF-8 policy."
         else:
             parsed = parse_problem_statement(fetch_result.html_text)
             parse_status = parsed.status
@@ -433,7 +483,10 @@ def capture_prospective_input(
                 "fetch_status": fetch_result.status,
                 "parse_status": parse_status,
                 "raw_html_sha256": raw_hash,
+                "decoded_html_sha256": decoded_html_hash,
                 "raw_path": raw_path.as_posix() if raw_path.is_file() else None,
+                "response_content_type": fetch_result.content_type,
+                "final_url": fetch_result.final_url or url,
                 "error": error_text,
             }
         )
@@ -466,10 +519,18 @@ def capture_prospective_input(
         "lock_deadline_utc": _format_utc(deadline),
         "capture_started_at_utc": _format_utc(capture_started),
         "requested_indices": normalized_indices,
+        "raw_capture_dir": raw_dir.as_posix(),
         "request_policy": {
             "source": "direct_public_problem_statement_pages",
             "metadata_api_used": False,
             "accept_language": "en-US,en;q=0.9",
+            "decode_policy": _DECODE_POLICY,
+        },
+        "extractor_sha256": {
+            "prospective_input": _sha256_lf_text_file(Path(__file__)),
+            "statement_features": _sha256_lf_text_file(
+                Path(__file__).with_name("statement_features.py")
+            ),
         },
         "problems": problem_records,
     }
@@ -502,20 +563,41 @@ def capture_prospective_input(
         )
     csv_text = frame.to_csv(index=False, lineterminator="\n")
     csv_bytes = csv_text.encode("utf-8")
-    _require_capture_time(
-        _parse_utc(clock_fn(), "pre-publication clock"),
-        contest_start,
-        deadline,
-        "pre-publication clock",
-    )
+    try:
+        _require_capture_time(
+            _parse_utc(clock_fn(), "pre-publication clock"),
+            contest_start,
+            deadline,
+            "pre-publication clock",
+        )
+    except ProspectiveInputError as error:
+        failed_at = _parse_utc(clock_fn(), "capture failure")
+        base_sidecar.update(
+            {
+                "status": "failed",
+                "capture_completed_at_utc": _format_utc(failed_at),
+                "output": None,
+                "error": str(error),
+            }
+        )
+        _write_sidecar_exclusive(sidecar_path, base_sidecar)
+        raise ProspectiveInputError(
+            f"T0 capture failed; no model input was written: {error}"
+        ) from error
     output_path.parent.mkdir(parents=True, exist_ok=True)
+    output_created = False
     try:
         with output_path.open("xb") as handle:
+            output_created = True
             handle.write(csv_bytes)
     except FileExistsError as error:
         raise ProspectiveInputError(
             f"Prospective input already exists and will not be overwritten: {output_path}"
         ) from error
+    except Exception:
+        if output_created and output_path.exists():
+            output_path.unlink()
+        raise
 
     capture_completed = _parse_utc(clock_fn(), "capture completion")
     if capture_completed > deadline:

@@ -140,6 +140,8 @@ class FetchResult:
     html_text: str | None
     http_status: int | None = None
     error: str = ""
+    content_type: str | None = None
+    final_url: str | None = None
 
 
 @dataclass(frozen=True)

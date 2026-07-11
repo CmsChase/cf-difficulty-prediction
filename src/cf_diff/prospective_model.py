@@ -18,14 +18,21 @@ import subprocess
 import sys
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
-from typing import Final, Mapping, Sequence
+from typing import Callable, Final, Mapping, Sequence
 
 import numpy as np
 import pandas as pd
 import pyarrow
 import pyarrow.parquet as pq
+import scipy
 import sklearn
 from sklearn.linear_model import Ridge
+
+from cf_diff.statement_features import (
+    _decode_bytes,
+    build_statement_feature_values,
+    parse_problem_statement,
+)
 
 
 DEFAULT_PROTOCOL_PATH: Final[Path] = Path("configs/prospective_protocol_v2.json")
@@ -51,6 +58,11 @@ PREDICTION_COLUMNS: Final[tuple[str, ...]] = (
 
 _DERIVED_INDEX_COLUMNS: Final[frozenset[str]] = frozenset(
     {"index_rank", "index_number"}
+)
+_DECODE_POLICY: Final[str] = "utf-8_errors_replace"
+_PROTOCOL_DECODE_POLICY: Final[str] = (
+    "Decode raw statement bytes as UTF-8 with replacement for invalid byte "
+    "sequences; response Content-Type and final redirect URL are audit-only fields."
 )
 _EXPLICIT_FORBIDDEN_COLUMN_TOKENS: Final[frozenset[str]] = frozenset(
     {
@@ -96,6 +108,14 @@ def _sha256_file(path: Path) -> str:
     return digest.hexdigest()
 
 
+def _sha256_lf_text_file(path: Path) -> str:
+    """Hash text with platform line endings normalized to LF."""
+    if not path.is_file():
+        raise ProspectiveModelError(f"Required text file does not exist: {path}")
+    normalized = path.read_bytes().replace(b"\r\n", b"\n")
+    return _sha256_bytes(normalized)
+
+
 def _canonical_json_bytes(payload: object, *, pretty: bool = False) -> bytes:
     options: dict[str, object] = {
         "ensure_ascii": False,
@@ -111,13 +131,19 @@ def _canonical_json_bytes(payload: object, *, pretty: bool = False) -> bytes:
 
 def _write_json(path: Path, payload: object) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
+    created = False
     try:
         with path.open("xb") as handle:
+            created = True
             handle.write(_canonical_json_bytes(payload, pretty=True))
     except FileExistsError as error:
         raise ProspectiveModelError(
             f"Frozen artifact already exists and will not be overwritten: {path}"
         ) from error
+    except Exception:
+        if created and path.exists():
+            path.unlink()
+        raise
 
 
 def _read_json_mapping(path: Path, description: str) -> dict[str, object]:
@@ -195,6 +221,10 @@ def _format_utc(value: datetime) -> str:
     return normalized.isoformat().replace("+00:00", "Z")
 
 
+def _utc_now() -> datetime:
+    return datetime.now(timezone.utc)
+
+
 def load_frozen_protocol(path: Path = DEFAULT_PROTOCOL_PATH) -> dict[str, object]:
     """Load and validate the immutable fields used by model code."""
     protocol = _read_json_mapping(path, "Prospective protocol")
@@ -257,6 +287,11 @@ def load_frozen_protocol(path: Path = DEFAULT_PROTOCOL_PATH) -> dict[str, object
     if not _DERIVED_INDEX_COLUMNS.issubset(primary):
         raise ProspectiveModelError(
             "Protocol primary features must include index_rank and index_number."
+        )
+    capture = _require_mapping(protocol, "input_capture", "protocol")
+    if capture.get("decode_policy") != _PROTOCOL_DECODE_POLICY:
+        raise ProspectiveModelError(
+            "Protocol input capture decode policy does not match the implementation."
         )
     return protocol
 
@@ -602,6 +637,35 @@ def _default_source_commit() -> str:
     return completed.stdout.strip()
 
 
+def _runtime_provenance() -> dict[str, str]:
+    config = getattr(np.__config__, "CONFIG", {})
+    dependencies = (
+        config.get("Build Dependencies", {})
+        if isinstance(config, dict)
+        else {}
+    )
+    blas = dependencies.get("blas", {}) if isinstance(dependencies, dict) else {}
+    lapack = (
+        dependencies.get("lapack", {})
+        if isinstance(dependencies, dict)
+        else {}
+    )
+    return {
+        "python": platform.python_version(),
+        "numpy": np.__version__,
+        "pandas": pd.__version__,
+        "pyarrow": pyarrow.__version__,
+        "scipy": scipy.__version__,
+        "scikit_learn": sklearn.__version__,
+        "platform": platform.platform(),
+        "machine": platform.machine() or "unknown",
+        "blas": str(blas.get("name", "unknown")),
+        "blas_version": str(blas.get("version", "unknown")),
+        "lapack": str(lapack.get("name", "unknown")),
+        "lapack_version": str(lapack.get("version", "unknown")),
+    }
+
+
 def freeze_prospective_model(
     *,
     protocol_path: Path,
@@ -610,8 +674,6 @@ def freeze_prospective_model(
     model_path: Path,
     manifest_path: Path,
     requirements_path: Path = DEFAULT_REQUIREMENTS_PATH,
-    source_commit: str | None = None,
-    frozen_at_utc: str | datetime | None = None,
 ) -> dict[str, Path]:
     """Fit both protocol-locked Ridge models and write JSON freeze artifacts."""
     if model_path.resolve() == manifest_path.resolve():
@@ -672,20 +734,12 @@ def freeze_prospective_model(
         _canonical_json_bytes(artifact, pretty=True)
     )
 
-    commit = (
-        _default_source_commit()
-        if source_commit is None
-        else source_commit.strip()
-    ).lower()
+    commit = _default_source_commit().strip().lower()
     if not re.fullmatch(r"[0-9a-f]{40}", commit):
         raise ProspectiveModelError(
             "source_commit must be a complete 40-character Git commit SHA."
         )
-    frozen_at = (
-        datetime.now(timezone.utc)
-        if frozen_at_utc is None
-        else _parse_utc(frozen_at_utc, "frozen_at_utc")
-    )
+    frozen_at = _parse_utc(_utc_now(), "model freeze clock")
     if frozen_at >= cutoff:
         raise ProspectiveModelError(
             "The model bundle must be frozen before the prospective cohort starts."
@@ -712,16 +766,19 @@ def freeze_prospective_model(
             "model_table": _sha256_file(model_table_path),
             "statement_features": _sha256_file(statement_features_path),
         },
-        "runtime": {
-            "python": platform.python_version(),
-            "numpy": np.__version__,
-            "pandas": pd.__version__,
-            "pyarrow": pyarrow.__version__,
-            "scikit_learn": sklearn.__version__,
-        },
+        "runtime": _runtime_provenance(),
         "dependency_spec": {
             "path": requirements_path.as_posix(),
-            "sha256": _sha256_file(requirements_path),
+            "sha256": _sha256_lf_text_file(requirements_path),
+        },
+        "source_sha256": {
+            "prospective_model": _sha256_lf_text_file(Path(__file__)),
+            "prospective_input": _sha256_lf_text_file(
+                Path(__file__).with_name("prospective_input.py")
+            ),
+            "statement_features": _sha256_lf_text_file(
+                Path(__file__).with_name("statement_features.py")
+            ),
         },
         "training_cutoff_utc": _format_utc(cutoff),
         "training_row_count": int(len(training)),
@@ -833,7 +890,20 @@ def _validate_freeze_manifest(
     for key, value in input_hashes.items():
         _require_sha256(value, f"manifest.input_sha256.{key}")
     runtime = _require_mapping(manifest, "runtime", "manifest")
-    runtime_keys = {"python", "numpy", "pandas", "pyarrow", "scikit_learn"}
+    runtime_keys = {
+        "python",
+        "numpy",
+        "pandas",
+        "pyarrow",
+        "scipy",
+        "scikit_learn",
+        "platform",
+        "machine",
+        "blas",
+        "blas_version",
+        "lapack",
+        "lapack_version",
+    }
     if set(runtime) != runtime_keys or any(
         not isinstance(runtime.get(key), str) or not str(runtime[key]).strip()
         for key in runtime_keys
@@ -847,6 +917,18 @@ def _validate_freeze_manifest(
         dependency.get("sha256"),
         "manifest.dependency_spec.sha256",
     )
+    source_hashes = _require_mapping(manifest, "source_sha256", "manifest")
+    expected_source_keys = {
+        "prospective_model",
+        "prospective_input",
+        "statement_features",
+    }
+    if set(source_hashes) != expected_source_keys:
+        raise ProspectiveModelError(
+            "Freeze manifest source_sha256 fields are incomplete."
+        )
+    for key, value in source_hashes.items():
+        _require_sha256(value, f"manifest.source_sha256.{key}")
     row_count = manifest.get("training_row_count")
     if isinstance(row_count, bool) or not isinstance(row_count, int) or row_count < 1:
         raise ProspectiveModelError(
@@ -874,6 +956,7 @@ def _load_verified_bundle(
     protocol_path: Path,
     model_path: Path,
     manifest_path: Path,
+    enforce_runtime: bool = False,
 ) -> tuple[dict[str, object], dict[str, object], dict[str, object]]:
     protocol = load_frozen_protocol(protocol_path)
     model = _read_json_mapping(model_path, "Model artifact")
@@ -903,6 +986,29 @@ def _load_verified_bundle(
     if model.get("schema_version") != 1 or manifest.get("schema_version") != 1:
         raise ProspectiveModelError("Model and manifest schema_version must equal 1.")
     _validate_freeze_manifest(manifest, protocol)
+    manifest_runtime = _require_mapping(manifest, "runtime", "manifest")
+    if enforce_runtime and manifest_runtime != _runtime_provenance():
+        raise ProspectiveModelError(
+            "Current numerical runtime does not match the frozen manifest."
+        )
+    manifest_source_hashes = _require_mapping(
+        manifest,
+        "source_sha256",
+        "manifest",
+    )
+    current_source_hashes = {
+        "prospective_model": _sha256_lf_text_file(Path(__file__)),
+        "prospective_input": _sha256_lf_text_file(
+            Path(__file__).with_name("prospective_input.py")
+        ),
+        "statement_features": _sha256_lf_text_file(
+            Path(__file__).with_name("statement_features.py")
+        ),
+    }
+    if manifest_source_hashes != current_source_hashes:
+        raise ProspectiveModelError(
+            "Current prospective source files do not match the frozen manifest."
+        )
     expected_estimator = {
         "name": "Ridge",
         "alpha": 1.0,
@@ -1061,10 +1167,11 @@ def _verify_capture_sidecar(
     input_path: Path,
     protocol_path: Path,
     protocol: Mapping[str, object],
+    manifest: Mapping[str, object],
     expected_columns: Sequence[str],
     contest_start: datetime,
     deadline: datetime,
-) -> tuple[dict[str, object], str, str, datetime]:
+) -> tuple[dict[str, object], str, str, datetime, pd.DataFrame]:
     sidecar = _read_json_mapping(sidecar_path, "T0 capture sidecar")
     if sidecar.get("schema_version") != 1 or sidecar.get("status") != "complete":
         raise ProspectiveModelError(
@@ -1099,9 +1206,30 @@ def _verify_capture_sidecar(
             "T0 capture sidecar timestamps fall outside the frozen capture window."
         )
     policy = _require_mapping(sidecar, "request_policy", "capture_sidecar")
-    if policy.get("metadata_api_used") is not False:
+    if (
+        policy.get("metadata_api_used") is not False
+        or policy.get("decode_policy") != _DECODE_POLICY
+    ):
         raise ProspectiveModelError(
-            "T0 capture sidecar must attest that no metadata API was used."
+            "T0 capture sidecar request policy does not match the frozen policy."
+        )
+    extractor_hashes = _require_mapping(
+        sidecar,
+        "extractor_sha256",
+        "capture_sidecar",
+    )
+    manifest_source_hashes = _require_mapping(
+        manifest,
+        "source_sha256",
+        "manifest",
+    )
+    expected_extractors = {"prospective_input", "statement_features"}
+    if set(extractor_hashes) != expected_extractors or any(
+        extractor_hashes.get(key) != manifest_source_hashes.get(key)
+        for key in expected_extractors
+    ):
+        raise ProspectiveModelError(
+            "T0 capture extractor hashes do not match the frozen model manifest."
         )
     output = _require_mapping(sidecar, "output", "capture_sidecar")
     if output.get("columns") != list(expected_columns):
@@ -1121,6 +1249,7 @@ def _verify_capture_sidecar(
     requested_indices = sidecar.get("requested_indices")
     problems = sidecar.get("problems")
     sidecar_contest = sidecar.get("contest_id")
+    raw_capture_dir_text = sidecar.get("raw_capture_dir")
     if (
         not isinstance(requested_indices, list)
         or any(
@@ -1134,10 +1263,14 @@ def _verify_capture_sidecar(
         or len(problems) != row_count
         or not isinstance(sidecar_contest, str)
         or not re.fullmatch(r"[1-9][0-9]*", sidecar_contest)
+        or not isinstance(raw_capture_dir_text, str)
+        or not raw_capture_dir_text.strip()
     ):
         raise ProspectiveModelError(
             "T0 capture sidecar does not account for every requested problem."
         )
+    reconstructed_records: list[dict[str, object]] = []
+    statement_columns = list(expected_columns[2:])
     for index, problem in zip(requested_indices, problems, strict=True):
         expected_url = (
             "https://codeforces.com/problemset/problem/"
@@ -1155,10 +1288,56 @@ def _verify_capture_sidecar(
             or not str(problem["raw_path"]).strip()
             or not isinstance(problem.get("raw_html_sha256"), str)
             or not re.fullmatch(r"[0-9a-f]{64}", str(problem["raw_html_sha256"]))
+            or not isinstance(problem.get("decoded_html_sha256"), str)
+            or not re.fullmatch(
+                r"[0-9a-f]{64}",
+                str(problem["decoded_html_sha256"]),
+            )
+            or not isinstance(problem.get("final_url"), str)
+            or not str(problem["final_url"]).startswith(("https://", "http://"))
+            or (
+                problem.get("response_content_type") is not None
+                and not isinstance(problem.get("response_content_type"), str)
+            )
         ):
             raise ProspectiveModelError(
                 "T0 capture sidecar contains an incomplete problem record."
             )
+        raw_path = Path(str(problem["raw_path"]))
+        expected_raw_path = (
+            Path(raw_capture_dir_text) / f"{sidecar_contest}_{index}.html"
+        )
+        if (
+            raw_path.resolve() != expected_raw_path.resolve()
+            or not raw_path.is_file()
+            or _sha256_file(raw_path) != problem.get("raw_html_sha256")
+        ):
+            raise ProspectiveModelError(
+                "T0 raw statement file is missing, misplaced, or hash-mismatched."
+            )
+        decoded_html = _decode_bytes(
+            raw_path.read_bytes(),
+            "text/html; charset=utf-8",
+        )
+        if _sha256_bytes(decoded_html.encode("utf-8")) != problem.get(
+            "decoded_html_sha256"
+        ):
+            raise ProspectiveModelError(
+                "T0 decoded statement hash does not match the capture sidecar."
+            )
+        parsed = parse_problem_statement(decoded_html)
+        if parsed.status != "parsed":
+            raise ProspectiveModelError(
+                "T0 raw statement no longer parses under the frozen extractor."
+            )
+        values = build_statement_feature_values(parsed)
+        reconstructed_records.append(
+            {
+                "contest_id": sidecar_contest,
+                "index": index,
+                **{column: values[column] for column in statement_columns},
+            }
+        )
         fetch_started = _parse_utc(
             _require_string(problem, "fetch_started_at_utc", "capture problem"),
             "capture problem.fetch_started_at_utc",
@@ -1171,7 +1350,44 @@ def _verify_capture_sidecar(
             raise ProspectiveModelError(
                 "T0 capture sidecar problem timestamps are inconsistent."
             )
-    return sidecar, input_sha256, _sha256_file(sidecar_path), capture_completed
+    reconstructed = pd.DataFrame(
+        reconstructed_records,
+        columns=list(expected_columns),
+    )
+    return (
+        sidecar,
+        input_sha256,
+        _sha256_file(sidecar_path),
+        capture_completed,
+        reconstructed,
+    )
+
+
+def _require_capture_feature_match(
+    actual: pd.DataFrame,
+    reconstructed: pd.DataFrame,
+    feature_columns: Sequence[str],
+) -> None:
+    expected = _prediction_feature_frame(reconstructed, feature_columns)
+    key_columns = ["contest_id", "index"]
+    if actual.loc[:, key_columns].astype(str).to_dict("records") != expected.loc[
+        :, key_columns
+    ].astype(str).to_dict("records"):
+        raise ProspectiveModelError(
+            "Prediction input keys do not match the verified raw statements."
+        )
+    statement_columns = [
+        column
+        for column in feature_columns
+        if column not in _DERIVED_INDEX_COLUMNS
+    ]
+    actual_matrix = _numeric_matrix(actual, statement_columns)
+    expected_matrix = _numeric_matrix(expected, statement_columns)
+    if not np.array_equal(actual_matrix, expected_matrix, equal_nan=True):
+        raise ProspectiveModelError(
+            "Prediction input features do not match features reconstructed from "
+            "the verified raw statements."
+        )
 
 
 def predict_prospective(
@@ -1183,7 +1399,7 @@ def predict_prospective(
     capture_sidecar_path: Path,
     output_path: Path,
     contest_start_utc: str | datetime,
-    prediction_created_at_utc: str | datetime | None = None,
+    _clock: Callable[[], datetime] | None = None,
 ) -> Path:
     """Predict without fitting after verifying all frozen-artifact hashes."""
     output_suffix = output_path.suffix.lower()
@@ -1199,6 +1415,7 @@ def predict_prospective(
         protocol_path=protocol_path,
         model_path=model_path,
         manifest_path=manifest_path,
+        enforce_runtime=True,
     )
     cohort = _require_mapping(protocol, "cohort", "protocol")
     eligibility_start = _parse_utc(
@@ -1214,14 +1431,11 @@ def predict_prospective(
         raise ProspectiveModelError(
             "contest_start_utc is outside the frozen protocol cohort window."
         )
-    created_at = (
-        datetime.now(timezone.utc)
-        if prediction_created_at_utc is None
-        else _parse_utc(prediction_created_at_utc, "prediction_created_at_utc")
-    )
-    if created_at < contest_start:
+    clock = _clock or _utc_now
+    prediction_started = _parse_utc(clock(), "prediction clock")
+    if prediction_started < contest_start:
         raise ProspectiveModelError(
-            "prediction_created_at_utc must be on or after contest_start_utc."
+            "Prediction clock must be on or after contest_start_utc."
         )
     timepoint = _require_mapping(protocol, "prediction_timepoint", "protocol")
     deadline_minutes = timepoint.get("lock_deadline_minutes_after_contest_start")
@@ -1229,32 +1443,41 @@ def predict_prospective(
         raise ProspectiveModelError(
             "Protocol prediction lock deadline must be a positive integer."
         )
-    if created_at > contest_start + timedelta(minutes=deadline_minutes):
+    deadline = contest_start + timedelta(minutes=deadline_minutes)
+    if prediction_started > deadline:
         raise ProspectiveModelError(
-            "prediction_created_at_utc is after the frozen lock deadline."
+            "Prediction clock is after the frozen lock deadline."
         )
 
     bundle = _require_mapping(protocol, "model_bundle", "protocol")
     primary_columns = _require_feature_columns(bundle, "primary_feature_columns")
     comparator_columns = _require_feature_columns(bundle, "comparator_feature_columns")
     expected_input_columns = _validate_prediction_schema(input_path, primary_columns)
-    sidecar, input_sha256, sidecar_sha256, capture_completed = (
+    (
+        sidecar,
+        input_sha256,
+        sidecar_sha256,
+        capture_completed,
+        reconstructed_input,
+    ) = (
         _verify_capture_sidecar(
             sidecar_path=capture_sidecar_path,
             input_path=input_path,
             protocol_path=protocol_path,
             protocol=protocol,
+            manifest=manifest,
             expected_columns=expected_input_columns,
             contest_start=contest_start,
-            deadline=contest_start + timedelta(minutes=deadline_minutes),
+            deadline=deadline,
         )
     )
-    if created_at < capture_completed:
-        raise ProspectiveModelError(
-            "prediction_created_at_utc cannot predate T0 capture completion."
-        )
     raw_input = _read_prediction_table(input_path, primary_columns)
     features = _prediction_feature_frame(raw_input, primary_columns)
+    _require_capture_feature_match(
+        features,
+        reconstructed_input,
+        primary_columns,
+    )
     sidecar_contest = str(sidecar.get("contest_id", "")).strip()
     if sidecar_contest != str(features["contest_id"].iloc[0]):
         raise ProspectiveModelError(
@@ -1272,6 +1495,15 @@ def predict_prospective(
         _feature_row_hash(row, primary_columns)
         for _, row in features.iterrows()
     ]
+    created_at = _parse_utc(clock(), "prediction creation clock")
+    if created_at < capture_completed:
+        raise ProspectiveModelError(
+            "Prediction creation cannot predate T0 capture completion."
+        )
+    if created_at > deadline:
+        raise ProspectiveModelError(
+            "Prediction creation crossed the frozen lock deadline."
+        )
     contest_start_text = _format_utc(contest_start)
     created_at_text = _format_utc(created_at)
     result = pd.DataFrame(
@@ -1293,12 +1525,26 @@ def predict_prospective(
         columns=list(PREDICTION_COLUMNS),
     )
     output_path.parent.mkdir(parents=True, exist_ok=True)
-    if output_suffix == ".csv":
-        with output_path.open("x", encoding="utf-8", newline="") as handle:
-            result.to_csv(handle, index=False)
-    else:
-        with output_path.open("xb") as handle:
-            result.to_parquet(handle, engine="pyarrow", index=False)
+    output_created = False
+    try:
+        if output_suffix == ".csv":
+            with output_path.open("x", encoding="utf-8", newline="") as handle:
+                output_created = True
+                result.to_csv(handle, index=False)
+        else:
+            with output_path.open("xb") as handle:
+                output_created = True
+                result.to_parquet(handle, engine="pyarrow", index=False)
+    except Exception:
+        if output_created and output_path.exists():
+            output_path.unlink()
+        raise
+    published_at = _parse_utc(clock(), "prediction publication clock")
+    if published_at > deadline:
+        output_path.unlink()
+        raise ProspectiveModelError(
+            "Prediction publication crossed the frozen lock deadline; output removed."
+        )
     return output_path
 
 
@@ -1324,7 +1570,6 @@ def _build_argument_parser() -> argparse.ArgumentParser:
         type=Path,
         default=DEFAULT_REQUIREMENTS_PATH,
     )
-    freeze.add_argument("--frozen-at-utc", default=None)
 
     predict = subparsers.add_parser(
         "predict", help="Run the verified frozen bundle without fitting."
@@ -1336,7 +1581,6 @@ def _build_argument_parser() -> argparse.ArgumentParser:
     predict.add_argument("--capture-sidecar", type=Path, required=True)
     predict.add_argument("--output", type=Path, required=True)
     predict.add_argument("--contest-start-utc", required=True)
-    predict.add_argument("--prediction-created-at-utc", default=None)
 
     verify = subparsers.add_parser(
         "verify",
@@ -1360,7 +1604,6 @@ def main(argv: Sequence[str] | None = None) -> int:
                 model_path=args.model_output,
                 manifest_path=args.manifest_output,
                 requirements_path=args.requirements,
-                frozen_at_utc=args.frozen_at_utc,
             )
             print(f"Wrote frozen model: {paths['model']}")
             print(f"Wrote freeze manifest: {paths['manifest']}")
@@ -1373,7 +1616,6 @@ def main(argv: Sequence[str] | None = None) -> int:
                 capture_sidecar_path=args.capture_sidecar,
                 output_path=args.output,
                 contest_start_utc=args.contest_start_utc,
-                prediction_created_at_utc=args.prediction_created_at_utc,
             )
             print(f"Wrote prospective predictions: {output}")
         else:

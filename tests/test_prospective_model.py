@@ -5,6 +5,7 @@ from __future__ import annotations
 import hashlib
 import json
 import sys
+from unittest.mock import patch
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -22,7 +23,11 @@ from cf_diff.prospective_model import (
     predict_prospective,
     verify_frozen_model,
 )
-from cf_diff.statement_features import STATEMENT_FEATURE_COLUMNS
+from cf_diff.statement_features import (
+    STATEMENT_FEATURE_COLUMNS,
+    build_statement_feature_values,
+    parse_problem_statement,
+)
 
 
 DRAFT_PROTOCOL_PATH = (
@@ -34,6 +39,51 @@ CONTEST_START_TEXT = "2026-08-15T01:00:00Z"
 CUTOFF_SECONDS = int(
     datetime(2026, 8, 15, tzinfo=timezone.utc).timestamp()
 )
+PREDICTION_HTML = """
+<html><body>
+  <div class="problem-statement">
+    <div class="time-limit">time limit per test 1.5 seconds</div>
+    <div class="memory-limit">memory limit per test 256 megabytes</div>
+    <p>Given a tree with n vertices, answer q queries.</p>
+    <div class="input-specification"><p>The first line contains n and q.</p></div>
+    <div class="output-specification"><p>Print the shortest path.</p></div>
+    <div class="sample-tests">
+      <div class="input"><pre>3 1</pre></div>
+      <div class="output"><pre>2</pre></div>
+    </div>
+  </div>
+</body></html>
+"""
+
+
+def _lf_sha256(path: Path) -> str:
+    return hashlib.sha256(
+        path.read_bytes().replace(b"\r\n", b"\n")
+    ).hexdigest()
+
+
+def _run_freeze(
+    *,
+    source_commit: str = SOURCE_COMMIT,
+    frozen_at_utc: str = "2026-08-02T00:00:00Z",
+    **kwargs: object,
+) -> dict[str, Path]:
+    frozen_at = datetime.fromisoformat(
+        frozen_at_utc.replace("Z", "+00:00")
+    )
+    with (
+        patch.object(
+            prospective_model,
+            "_default_source_commit",
+            return_value=source_commit,
+        ),
+        patch.object(
+            prospective_model,
+            "_utc_now",
+            return_value=frozen_at,
+        ),
+    ):
+        return freeze_prospective_model(**kwargs)  # type: ignore[arg-type]
 
 
 def _frozen_protocol(tmp_path: Path) -> Path:
@@ -114,7 +164,7 @@ def _freeze(tmp_path: Path) -> tuple[Path, Path, Path]:
     )
     model_path = tmp_path / "bundle.json"
     manifest_path = tmp_path / "manifest.json"
-    freeze_prospective_model(
+    _run_freeze(
         protocol_path=protocol_path,
         model_table_path=model_table_path,
         statement_features_path=statement_features_path,
@@ -128,20 +178,14 @@ def _freeze(tmp_path: Path) -> tuple[Path, Path, Path]:
 
 
 def _prediction_input() -> pd.DataFrame:
-    payload: dict[str, object] = {
-        "contest_id": ["3000", "3000"],
-        "index": ["A", "D2"],
-    }
-    for column_number, column in enumerate(
-        STATEMENT_FEATURE_COLUMNS,
-        start=1,
-    ):
-        payload[column] = [
-            float(column_number + 10),
-            float(column_number + 20),
-        ]
+    parsed = parse_problem_statement(PREDICTION_HTML)
+    assert parsed.status == "parsed"
+    values = build_statement_feature_values(parsed)
     return pd.DataFrame(
-        payload,
+        [
+            {"contest_id": "3000", "index": index, **values}
+            for index in ("A", "D2")
+        ],
         columns=["contest_id", "index", *STATEMENT_FEATURE_COLUMNS],
     )
 
@@ -168,8 +212,14 @@ def _write_capture_sidecar(
         else frame["index"].astype(str).tolist()
     )
     row_count = len(indices)
-    problems = [
-        {
+    raw_dir = path.parent / "raw-capture"
+    raw_dir.mkdir(parents=True, exist_ok=True)
+    problems: list[dict[str, object]] = []
+    for index in indices:
+        raw_path = raw_dir / f"3000_{index}.html"
+        raw_bytes = PREDICTION_HTML.encode("utf-8")
+        raw_path.write_bytes(raw_bytes)
+        problems.append({
             "index": index,
             "url": f"https://codeforces.com/problemset/problem/3000/{index}",
             "fetch_started_at_utc": "2026-08-15T01:00:10Z",
@@ -177,12 +227,13 @@ def _write_capture_sidecar(
             "http_status": 200,
             "fetch_status": "fetched",
             "parse_status": "parsed",
-            "raw_html_sha256": hashlib.sha256(index.encode()).hexdigest(),
-            "raw_path": f"prospective/raw/3000/3000_{index}.html",
+            "raw_html_sha256": hashlib.sha256(raw_bytes).hexdigest(),
+            "decoded_html_sha256": hashlib.sha256(raw_bytes).hexdigest(),
+            "raw_path": raw_path.as_posix(),
+            "response_content_type": "text/html; charset=utf-8",
+            "final_url": f"https://codeforces.com/problemset/problem/3000/{index}",
             "error": "",
-        }
-        for index in indices
-    ]
+        })
     sidecar = {
         "schema_version": 1,
         "status": "complete",
@@ -195,10 +246,20 @@ def _write_capture_sidecar(
         "capture_started_at_utc": "2026-08-15T01:00:10Z",
         "capture_completed_at_utc": "2026-08-15T01:01:00Z",
         "requested_indices": indices,
+        "raw_capture_dir": raw_dir.as_posix(),
         "request_policy": {
             "source": "direct_public_problem_statement_pages",
             "metadata_api_used": False,
             "accept_language": "en-US,en;q=0.9",
+            "decode_policy": "utf-8_errors_replace",
+        },
+        "extractor_sha256": {
+            "prospective_input": _lf_sha256(
+                PROJECT_ROOT / "src/cf_diff/prospective_input.py"
+            ),
+            "statement_features": _lf_sha256(
+                PROJECT_ROOT / "src/cf_diff/statement_features.py"
+            ),
         },
         "problems": problems,
         "output": {
@@ -250,6 +311,7 @@ def _predict(
     contest_start: str = CONTEST_START_TEXT,
     created_at: str = "2026-08-15T01:02:00Z",
 ) -> Path:
+    clock_value = datetime.fromisoformat(created_at.replace("Z", "+00:00"))
     return predict_prospective(
         protocol_path=protocol_path,
         model_path=model_path,
@@ -258,7 +320,7 @@ def _predict(
         capture_sidecar_path=sidecar_path,
         output_path=output_path,
         contest_start_utc=contest_start,
-        prediction_created_at_utc=created_at,
+        _clock=lambda: clock_value,
     )
 
 
@@ -289,11 +351,23 @@ def test_freeze_writes_locked_json_and_full_provenance(tmp_path: Path) -> None:
         "numpy",
         "pandas",
         "pyarrow",
+        "scipy",
         "scikit_learn",
+        "platform",
+        "machine",
+        "blas",
+        "blas_version",
+        "lapack",
+        "lapack_version",
     }
-    assert manifest["dependency_spec"]["sha256"] == hashlib.sha256(
-        REQUIREMENTS_PATH.read_bytes()
-    ).hexdigest()
+    assert manifest["dependency_spec"]["sha256"] == _lf_sha256(
+        REQUIREMENTS_PATH
+    )
+    assert set(manifest["source_sha256"]) == {
+        "prospective_model",
+        "prospective_input",
+        "statement_features",
+    }
     verified = verify_frozen_model(
         protocol_path=protocol_path,
         model_path=model_path,
@@ -324,7 +398,7 @@ def test_freeze_only_uses_allowlisted_pre_cutoff_features(tmp_path: Path) -> Non
         model_variant.to_parquet(model_table_path, index=False)
         statements_variant.to_parquet(statements_path, index=False)
         artifact_path = directory / "bundle.json"
-        freeze_prospective_model(
+        _run_freeze(
             protocol_path=protocol_path,
             model_table_path=model_table_path,
             statement_features_path=statements_path,
@@ -386,11 +460,10 @@ def test_csv_and_parquet_prediction_are_deterministic_and_exact(
     )
 
 
-def test_numeric_index_and_blank_missing_value_are_preserved(tmp_path: Path) -> None:
+def test_numeric_index_is_preserved(tmp_path: Path) -> None:
     protocol_path, model_path, manifest_path = _freeze(tmp_path)
     frame = _prediction_input().iloc[[0]].copy()
     frame["index"] = "01"
-    frame["time_limit_ms"] = ""
     input_path, sidecar_path = _prediction_paths(
         tmp_path / "prediction",
         protocol_path,
@@ -643,6 +716,71 @@ def test_tampered_model_manifest_and_sidecar_are_rejected(tmp_path: Path) -> Non
         )
 
 
+def test_tampered_raw_statement_is_rejected(tmp_path: Path) -> None:
+    protocol_path, model_path, manifest_path = _freeze(tmp_path)
+    directory = tmp_path / "prediction"
+    directory.mkdir()
+    input_path, sidecar_path = _prediction_paths(directory, protocol_path)
+    sidecar = json.loads(sidecar_path.read_text(encoding="utf-8"))
+    raw_path = Path(sidecar["problems"][0]["raw_path"])
+    raw_path.write_text("tampered", encoding="utf-8")
+
+    with pytest.raises(ProspectiveModelError, match="raw statement"):
+        _predict(
+            protocol_path=protocol_path,
+            model_path=model_path,
+            manifest_path=manifest_path,
+            input_path=input_path,
+            sidecar_path=sidecar_path,
+            output_path=tmp_path / "output.csv",
+        )
+
+
+def test_prediction_rejects_runtime_drift(tmp_path: Path) -> None:
+    protocol_path, model_path, manifest_path = _freeze(tmp_path)
+    directory = tmp_path / "prediction"
+    directory.mkdir()
+    input_path, sidecar_path = _prediction_paths(directory, protocol_path)
+    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    manifest["runtime"]["numpy"] = "0.0-runtime-drift"
+    manifest_path.write_text(json.dumps(manifest), encoding="utf-8")
+
+    with pytest.raises(ProspectiveModelError, match="runtime"):
+        _predict(
+            protocol_path=protocol_path,
+            model_path=model_path,
+            manifest_path=manifest_path,
+            input_path=input_path,
+            sidecar_path=sidecar_path,
+            output_path=tmp_path / "output.csv",
+        )
+
+
+def test_allowlisted_feature_tampering_cannot_hide_behind_new_hashes(
+    tmp_path: Path,
+) -> None:
+    protocol_path, model_path, manifest_path = _freeze(tmp_path)
+    frame = _prediction_input()
+    frame.loc[0, "statement_char_len"] += 999
+    directory = tmp_path / "prediction"
+    directory.mkdir()
+    input_path, sidecar_path = _prediction_paths(
+        directory,
+        protocol_path,
+        frame=frame,
+    )
+
+    with pytest.raises(ProspectiveModelError, match="reconstructed"):
+        _predict(
+            protocol_path=protocol_path,
+            model_path=model_path,
+            manifest_path=manifest_path,
+            input_path=input_path,
+            sidecar_path=sidecar_path,
+            output_path=tmp_path / "output.csv",
+        )
+
+
 @pytest.mark.parametrize(
     ("contest_start", "created", "message"),
     [
@@ -671,6 +809,76 @@ def test_prediction_enforces_cohort_and_recording_times(
         )
 
 
+@pytest.mark.parametrize("crossing_phase", ["creation", "publication"])
+def test_prediction_deadline_crossing_never_leaves_an_output(
+    tmp_path: Path,
+    crossing_phase: str,
+) -> None:
+    protocol_path, model_path, manifest_path = _freeze(tmp_path)
+    directory = tmp_path / "prediction"
+    directory.mkdir()
+    input_path, sidecar_path = _prediction_paths(directory, protocol_path)
+    in_window = datetime(2026, 8, 15, 1, 29, 59, tzinfo=timezone.utc)
+    too_late = datetime(2026, 8, 15, 1, 30, 1, tzinfo=timezone.utc)
+    values = (
+        [in_window, too_late]
+        if crossing_phase == "creation"
+        else [in_window, in_window, too_late]
+    )
+    position = {"value": 0}
+
+    def clock() -> datetime:
+        index = min(position["value"], len(values) - 1)
+        position["value"] += 1
+        return values[index]
+
+    output_path = tmp_path / "output.csv"
+    with pytest.raises(ProspectiveModelError, match="crossed"):
+        predict_prospective(
+            protocol_path=protocol_path,
+            model_path=model_path,
+            manifest_path=manifest_path,
+            input_path=input_path,
+            capture_sidecar_path=sidecar_path,
+            output_path=output_path,
+            contest_start_utc=CONTEST_START_TEXT,
+            _clock=clock,
+        )
+    assert not output_path.exists()
+
+
+def test_operational_clis_have_no_timestamp_override() -> None:
+    parser = prospective_model._build_argument_parser()
+    with pytest.raises(SystemExit):
+        parser.parse_args(
+            [
+                "predict",
+                "--input",
+                "input.csv",
+                "--capture-sidecar",
+                "input.capture.json",
+                "--output",
+                "prediction.csv",
+                "--contest-start-utc",
+                CONTEST_START_TEXT,
+                "--prediction-created-at-utc",
+                "2026-08-15T01:01:00Z",
+            ]
+        )
+    with pytest.raises(SystemExit):
+        parser.parse_args(
+            [
+                "freeze",
+                "--model-table",
+                "model.parquet",
+                "--statement-features",
+                "statements.parquet",
+                "--frozen-at-utc",
+                "2026-08-02T00:00:00Z",
+            ]
+        )
+
+
 @pytest.mark.parametrize(
     ("source_commit", "frozen_at", "message"),
     [
@@ -694,7 +902,7 @@ def test_invalid_freeze_metadata_leaves_no_artifacts(
     manifest_path = tmp_path / "manifest.json"
 
     with pytest.raises(ProspectiveModelError, match=message):
-        freeze_prospective_model(
+        _run_freeze(
             protocol_path=protocol_path,
             model_table_path=model_table_path,
             statement_features_path=statements_path,
@@ -714,7 +922,7 @@ def test_freeze_rejects_draft_protocol_and_existing_artifacts(
     model_path = tmp_path / "bundle.json"
     manifest_path = tmp_path / "manifest.json"
     with pytest.raises(ProspectiveModelError, match="status must be 'frozen'"):
-        freeze_prospective_model(
+        _run_freeze(
             protocol_path=DRAFT_PROTOCOL_PATH,
             model_table_path=tmp_path / "unused.parquet",
             statement_features_path=tmp_path / "unused-statements.parquet",
@@ -730,7 +938,7 @@ def test_freeze_rejects_draft_protocol_and_existing_artifacts(
     model_path.write_text("keep-model", encoding="utf-8")
     manifest_path.write_text("keep-manifest", encoding="utf-8")
     with pytest.raises(ProspectiveModelError, match="will not be overwritten"):
-        freeze_prospective_model(
+        _run_freeze(
             protocol_path=DRAFT_PROTOCOL_PATH,
             model_table_path=tmp_path / "unused.parquet",
             statement_features_path=tmp_path / "unused-statements.parquet",
@@ -742,6 +950,42 @@ def test_freeze_rejects_draft_protocol_and_existing_artifacts(
         )
     assert model_path.read_text(encoding="utf-8") == "keep-model"
     assert manifest_path.read_text(encoding="utf-8") == "keep-manifest"
+
+
+def test_exclusive_json_writer_removes_partial_file_on_io_failure(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    target = tmp_path / "partial.json"
+    original_open = Path.open
+
+    class FailingWriter:
+        def __enter__(self) -> "FailingWriter":
+            self.handle = original_open(target, "xb")
+            return self
+
+        def write(self, value: bytes) -> int:
+            self.handle.write(value[:8])
+            self.handle.flush()
+            raise OSError("simulated disk failure")
+
+        def __exit__(self, *args: object) -> None:
+            self.handle.close()
+
+    def patched_open(
+        path: Path,
+        mode: str = "r",
+        *args: object,
+        **kwargs: object,
+    ) -> object:
+        if path == target and mode == "xb":
+            return FailingWriter()
+        return original_open(path, mode, *args, **kwargs)
+
+    monkeypatch.setattr(Path, "open", patched_open)
+    with pytest.raises(OSError, match="simulated"):
+        prospective_model._write_json(target, {"value": 1})
+    assert not target.exists()
 
 
 def test_freeze_requires_one_to_one_statement_join(tmp_path: Path) -> None:
@@ -756,7 +1000,7 @@ def test_freeze_requires_one_to_one_statement_join(tmp_path: Path) -> None:
     statements.to_parquet(statements_path, index=False)
 
     with pytest.raises(ProspectiveModelError, match="missing"):
-        freeze_prospective_model(
+        _run_freeze(
             protocol_path=protocol_path,
             model_table_path=model_path,
             statement_features_path=statements_path,

@@ -20,13 +20,15 @@
       "duplicate contest_id and index keys"
     ],
     "close_rule": "Close at the eligibility end timestamp, but do not run the confirmatory analysis unless both minimum sample thresholds are met; otherwise report the cohort as underpowered without extending it post hoc.",
-    "operational_misses": "A contest with incomplete T0 capture or prediction is retained in the operational coverage denominator and recorded as missed; it is never silently dropped or partially predicted."
+    "operational_misses": "A contest with incomplete T0 capture or prediction is retained in the operational coverage denominator and recorded as missed; it is never silently dropped or partially predicted.",
+    "cohort_census_rule": "Starting five minutes after eligibility_end_utc, request the official Codeforces contest.list endpoint with gym=false. Use the first successful full snapshot, retrying every 30 minutes for at most 24 hours, and commit its SHA-256. Enumerate every non-gym contest whose scheduled start lies inside the eligibility window. Each must map exactly once to a locked prediction set, an operational miss, or a pre-specified exclusion. Any unmapped or multiply mapped contest is a cohort-integrity failure and blocks confirmatory analysis; if no snapshot succeeds by the deadline, report the cohort as unverifiable without choosing a later snapshot."
   },
   "prediction_timepoint": {
     "name": "T0",
     "definition": "After the public problem statement is available and before this project reads or joins the official problem rating.",
     "lock_deadline_minutes_after_contest_start": 30,
-    "public_commitment": "Publish the append-only prediction ledger on the repository default branch before running the separate reveal command."
+    "clock_policy": "Capture and prediction CLIs obtain UTC from the system clock and expose no timestamp override. They check before and after exclusive publication; an operation crossing the deadline retains no model input or prediction.",
+    "public_commitment": "The sanitized input hash, capture-sidecar hash, prediction hash, and append-only ledger event must reach the repository default branch before the T0 lock deadline. Record a GitHub Actions push-event run id, URL, and GitHub-created timestamp at or before the deadline as the external time witness; local Git author or committer dates are insufficient. A late or missing witness makes the whole contest an operational miss."
   },
   "model_bundle": {
     "bundle_id": "text-light-ridge-v2",
@@ -94,12 +96,13 @@
       "submission or acceptance statistics",
       "manually assigned difficulty labels"
     ],
-    "freeze_requirement": "After this draft is reviewed, change status to frozen, record the freeze timestamp, and commit the protocol, JSON model bundle, runtime manifest, hashes, and source commit before the first eligible prediction."
+    "freeze_requirement": "After this draft is reviewed, freeze and test the confirmatory analysis implementation, then change status to frozen, record the freeze timestamp, and commit the protocol, analysis code, JSON model bundle, runtime manifest, hashes, and source commit before the first eligible prediction."
   },
   "outcome": {
     "field": "official Codeforces problem rating",
     "reveal_source": "Codeforces problemset.problems queried only by the separate reveal step",
     "minimum_reveal_delay_hours_after_contest_start": 72,
+    "rating_version_rule": "Per-contest reveal may append the first rating snapshot obtained no earlier than 72 hours for audit. For the confirmatory outcome, begin five minutes after eligibility_end_utc plus 72 hours and use the first successful full problemset.problems snapshot, retrying every 30 minutes for at most 24 hours; commit its SHA-256 before analysis. A rating absent from that snapshot is missing for the primary analysis. If no snapshot succeeds by the deadline, do not choose a later version or run confirmatory analysis. Later official revisions are descriptive amendments only.",
     "rounding": "Predictions remain floating point in the ledger; no rounding before metric calculation."
   },
   "confirmatory_analysis": {
@@ -107,6 +110,12 @@
     "primary_metric": "problem-level MAE difference",
     "uncertainty": "Two-sided 95% percentile interval from 10000 contest-cluster bootstrap resamples.",
     "bootstrap_seed": 20260710,
+    "bootstrap_rng": "NumPy Generator with PCG64 and bootstrap_seed; sort normalized contest_id values lexicographically before sampling.",
+    "bootstrap_resampling": "For each replicate, sample exactly the observed number of contests uniformly with replacement. Include every rated problem row from each selected contest once per draw, preserving cluster multiplicity, then compute the problem-level mean paired absolute-error improvement on the expanded rows.",
+    "interval_quantiles": "Use NumPy quantile probabilities 0.025 and 0.975 with method='linear' over the 10000 replicate means.",
+    "analysis_input_validation": "Require unique contest_id,index prediction keys, one matching outcome at most, finite predictions, and no duplicate contest clusters. Exclude missing official ratings without imputation and report their count. Fail rather than silently repair malformed or duplicate rows.",
+    "minimum_threshold_population": "The minimum 30 contests and 200 problems are counted only among distinct contests and paired problem rows that have both locked primary/comparator predictions and a rating in the single cohort-close outcome snapshot. Operational misses remain in the coverage denominator but do not count toward thresholds or bootstrap samples.",
+    "analysis_execution_gate": "The deterministic confirmatory-analysis implementation and fixture tests must be committed before protocol freeze. The command must refuse aggregate analysis before the fixed census and outcome snapshot windows complete, when any census contest is unmapped or multiply mapped, or when either minimum sample threshold is unmet.",
     "success_rule": "The primary model is confirmatorily better only if the entire 95% interval for paired MAE improvement is above zero.",
     "secondary_metrics": [
       "primary-model problem-level MAE",
@@ -119,7 +128,7 @@
     "missing_outcomes": "Do not impute ratings. Report eligible predictions lacking a rating separately and exclude them from metric denominators.",
     "no_peeking_rule": "Do not calculate aggregate prospective performance or alter model, features, exclusions, endpoints, or thresholds before cohort close."
   },
-  "amendments": "While status is draft, changes remain reviewable in Git history. After status becomes frozen, never edit this file in place after the first eligible prediction. Any substantive change requires a new protocol_id and future cohort; document deviations without deleting prior evidence.",
+  "amendments": "While status is draft, changes remain reviewable in Git history. From the commit that changes status to frozen, never edit this file in place. Any later change, even before the first prediction, requires a new protocol_id and future cohort; document deviations without deleting prior evidence.",
   "protocol_drafted_at_utc": "2026-07-11T05:51:48Z",
   "supersedes": {
     "protocol_id": "cf-difficulty-prospective-v1",
@@ -128,8 +137,10 @@
   },
   "input_capture": {
     "source": "Public Codeforces problem statement pages constructed only from an explicit contest_id and explicit problem indices.",
+    "decode_policy": "Decode raw statement bytes as UTF-8 with replacement for invalid byte sequences; response Content-Type and final redirect URL are audit-only fields.",
     "metadata_api_policy": "Do not call Codeforces problemset metadata APIs, read a local metadata table, or join labels, points, tags, solved counts, submissions, acceptances, or verdicts at T0.",
     "index_entry_policy": "The operator must enter every problem index visible in the public contest interface; contest_start_utc and the index list are recorded as explicit operator inputs and verified only after reveal.",
+    "post_reveal_verification": "The reveal step must verify the scheduled start and complete problem-index list against the official contest record. Any mismatch makes the whole contest an operational miss; never add or correct prediction rows post hoc.",
     "model_input_schema": "Exactly contest_id,index followed by the 41 protocol statement feature columns in frozen order. Derived index features are computed by the predictor. Fetch status, URLs, timestamps, hashes, and errors belong only in the capture sidecar.",
     "completeness_rule": "All requested statements must be freshly fetched and parsed. Any failure invalidates the whole contest input and is recorded as an operational miss; partial prediction is prohibited.",
     "immutability_rule": "Capture input, raw pages, sidecar, model artifacts, and prediction outputs use no-overwrite publication semantics."

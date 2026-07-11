@@ -5,6 +5,7 @@ from __future__ import annotations
 import hashlib
 import json
 import sys
+from unittest.mock import patch
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -14,7 +15,7 @@ import pytest
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(PROJECT_ROOT / "src"))
 
-from cf_diff import prospective_input
+from cf_diff import prospective_input, prospective_model
 from cf_diff.prospective_input import (
     ProspectiveInputError,
     capture_prospective_input,
@@ -336,7 +337,7 @@ def test_partial_fetch_failure_writes_failure_sidecar_not_csv(
                 html_text=None,
                 error="network unavailable",
             )
-        raw_path.write_text(SYNTHETIC_HTML, encoding="utf-8")
+        raw_path.write_bytes(SYNTHETIC_HTML.encode("utf-8"))
         return FetchResult(
             status="fetched",
             cache_path=raw_path,
@@ -410,6 +411,47 @@ def test_non_statement_page_is_an_audited_whole_contest_failure(
     assert sidecar["problems"][1]["fetch_status"] == "not_attempted"
 
 
+@pytest.mark.parametrize("failure_mode", ["non_200", "missing_raw"])
+def test_capture_never_publishes_a_sidecar_the_predictor_must_reject(
+    tmp_path: Path,
+    failure_mode: str,
+) -> None:
+    protocol_path = _frozen_protocol(tmp_path)
+    output_path, sidecar_path, raw_dir = _targets(tmp_path)
+
+    def fetcher(**kwargs: object) -> FetchResult:
+        raw_path = Path(kwargs["raw_path"])
+        if failure_mode != "missing_raw":
+            raw_path.write_text(SYNTHETIC_HTML, encoding="utf-8", newline="\n")
+        return FetchResult(
+            status="fetched",
+            cache_path=raw_path,
+            html_text=SYNTHETIC_HTML,
+            http_status=302 if failure_mode == "non_200" else 200,
+        )
+
+    with pytest.raises(ProspectiveInputError, match="no model input"):
+        capture_prospective_input(
+            protocol_path=protocol_path,
+            contest_id="3000",
+            indices=["A"],
+            contest_start_utc=CONTEST_START,
+            output_path=output_path,
+            sidecar_path=sidecar_path,
+            raw_dir=raw_dir,
+            sleep_seconds=0,
+            clock=lambda: CAPTURE_TIME,
+            fetcher=fetcher,
+        )
+
+    assert not output_path.exists()
+    sidecar = json.loads(sidecar_path.read_text(encoding="utf-8"))
+    assert sidecar["status"] == "failed"
+    assert sidecar["output"] is None
+    expected = "HTTP 200" if failure_mode == "non_200" else "raw statement"
+    assert expected in sidecar["error"]
+
+
 def test_deadline_crossing_removes_csv_and_records_failure(tmp_path: Path) -> None:
     protocol_path = _frozen_protocol(tmp_path)
     output_path, sidecar_path, raw_dir = _targets(tmp_path)
@@ -457,6 +499,39 @@ def test_deadline_crossing_removes_csv_and_records_failure(tmp_path: Path) -> No
     assert "deadline" in sidecar["error"]
 
 
+def test_prepublication_deadline_failure_still_writes_audit_sidecar(
+    tmp_path: Path,
+) -> None:
+    protocol_path = _frozen_protocol(tmp_path)
+    output_path, sidecar_path, raw_dir = _targets(tmp_path)
+    late = datetime(2026, 8, 15, 1, 30, 1, tzinfo=timezone.utc)
+    calls = {"count": 0}
+
+    def clock() -> datetime:
+        calls["count"] += 1
+        return CAPTURE_TIME if calls["count"] <= 4 else late
+
+    with pytest.raises(ProspectiveInputError, match="no model input"):
+        capture_prospective_input(
+            protocol_path=protocol_path,
+            contest_id="3000",
+            indices=["A"],
+            contest_start_utc=CONTEST_START,
+            output_path=output_path,
+            sidecar_path=sidecar_path,
+            raw_dir=raw_dir,
+            sleep_seconds=0,
+            clock=clock,
+            fetcher=_successful_fetcher([]),
+        )
+
+    assert not output_path.exists()
+    sidecar = json.loads(sidecar_path.read_text(encoding="utf-8"))
+    assert sidecar["status"] == "failed"
+    assert sidecar["output"] is None
+    assert "pre-publication clock" in sidecar["error"]
+
+
 def test_cli_smoke_uses_the_same_guarded_capture(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
@@ -497,6 +572,50 @@ def test_cli_smoke_uses_the_same_guarded_capture(
     assert sidecar_path.is_file()
 
 
+def test_exclusive_sidecar_writer_removes_partial_file_on_io_failure(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    target = tmp_path / "partial.capture.json"
+    original_open = Path.open
+
+    class FailingWriter:
+        def __enter__(self) -> "FailingWriter":
+            self.handle = original_open(
+                target,
+                "x",
+                encoding="utf-8",
+                newline="\n",
+            )
+            return self
+
+        def write(self, value: str) -> int:
+            self.handle.write(value[:8])
+            self.handle.flush()
+            raise OSError("simulated sidecar disk failure")
+
+        def __exit__(self, *args: object) -> None:
+            self.handle.close()
+
+    def patched_open(
+        path: Path,
+        mode: str = "r",
+        *args: object,
+        **kwargs: object,
+    ) -> object:
+        if path == target and mode == "x":
+            return FailingWriter()
+        return original_open(path, mode, *args, **kwargs)
+
+    monkeypatch.setattr(Path, "open", patched_open)
+    with pytest.raises(OSError, match="simulated"):
+        prospective_input._write_sidecar_exclusive(
+            target,
+            {"status": "failed"},
+        )
+    assert not target.exists()
+
+
 def test_synthetic_capture_freeze_predict_dry_run(tmp_path: Path) -> None:
     """Exercise the complete pre-ledger chain without a metadata API."""
     protocol_path = _frozen_protocol(tmp_path)
@@ -531,16 +650,26 @@ def test_synthetic_capture_freeze_predict_dry_run(tmp_path: Path) -> None:
     pd.DataFrame(statements).to_parquet(statements_path, index=False)
     model_path = tmp_path / "bundle.json"
     manifest_path = tmp_path / "manifest.json"
-    freeze_prospective_model(
-        protocol_path=protocol_path,
-        model_table_path=model_table_path,
-        statement_features_path=statements_path,
-        model_path=model_path,
-        manifest_path=manifest_path,
-        requirements_path=PROJECT_ROOT / "requirements.txt",
-        source_commit="0123456789abcdef0123456789abcdef01234567",
-        frozen_at_utc="2026-08-02T00:00:00Z",
-    )
+    with (
+        patch.object(
+            prospective_model,
+            "_default_source_commit",
+            return_value="0123456789abcdef0123456789abcdef01234567",
+        ),
+        patch.object(
+            prospective_model,
+            "_utc_now",
+            return_value=datetime(2026, 8, 2, tzinfo=timezone.utc),
+        ),
+    ):
+        freeze_prospective_model(
+            protocol_path=protocol_path,
+            model_table_path=model_table_path,
+            statement_features_path=statements_path,
+            model_path=model_path,
+            manifest_path=manifest_path,
+            requirements_path=PROJECT_ROOT / "requirements.txt",
+        )
 
     output_path, sidecar_path, raw_dir = _targets(tmp_path)
     capture_prospective_input(
@@ -564,7 +693,14 @@ def test_synthetic_capture_freeze_predict_dry_run(tmp_path: Path) -> None:
         capture_sidecar_path=sidecar_path,
         output_path=prediction_path,
         contest_start_utc=CONTEST_START,
-        prediction_created_at_utc="2026-08-15T01:02:00Z",
+        _clock=lambda: datetime(
+            2026,
+            8,
+            15,
+            1,
+            2,
+            tzinfo=timezone.utc,
+        ),
     )
 
     predictions = pd.read_csv(prediction_path)

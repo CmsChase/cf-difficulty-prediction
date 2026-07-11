@@ -41,9 +41,15 @@ python -m cf_diff.prospective_model predict `
   --output prospective/predictions/3000_predictions.csv
 ```
 
-Until the ledger change is merged, these commands are for synthetic dry runs
-only. Do not use them to enroll a real contest.
+Until the ledger, reveal, and frozen confirmatory-analysis changes are merged,
+these commands are for synthetic dry runs only. Do not use them to enroll a
+real contest.
 
 Raw HTML is retained locally for capture audit and ignored by Git. Sanitized
 feature inputs, sidecars, frozen model artifacts, and later ledger events are
 the public evidence.
+
+The predictor re-hashes every local raw statement file before accepting its
+sidecar. Public hashes make the frozen bundle and predictions auditable, but
+the historical training tables remain local; the bundle is not independently
+rebuildable from the public repository alone.

@@ -8,6 +8,7 @@ prospective prediction. Its planned cohort start was 2026-07-12 00:00:00 UTC.
 
 The original records remain unchanged and publicly inspectable:
 
+- archived snapshot tag: `archive/research-governance-2026-07-10`;
 - [v1 protocol at commit `79fa9ed`](https://github.com/CmsChase/cf-difficulty-prediction/blob/79fa9ed/configs/prospective_protocol_v1.json)
 - [v1 model bundle at commit `79fa9ed`](https://github.com/CmsChase/cf-difficulty-prediction/blob/79fa9ed/prospective/model_bundle_v1.json)
 - [v1 freeze manifest at commit `79fa9ed`](https://github.com/CmsChase/cf-difficulty-prediction/blob/79fa9ed/prospective/model_freeze_manifest_v1.json)
