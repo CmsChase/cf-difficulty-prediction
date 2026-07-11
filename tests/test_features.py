@@ -7,11 +7,41 @@ import sys
 from pathlib import Path
 
 import pandas as pd
+import pytest
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(PROJECT_ROOT / "src"))
 
 from cf_diff import features
+
+
+def test_repository_config_uses_declared_nested_values() -> None:
+    """The checked-in schema must drive the effective split settings."""
+    config = features.load_experiment_config(
+        PROJECT_ROOT / "configs" / "experiment.yaml"
+    )
+    assert config.schema_version == 1
+    assert config.project_name == "cf_difficulty_prediction"
+    assert config.grouped_split == features.SplitRatios(0.8, 0.1, 0.1)
+    assert config.forward_time_split == features.SplitRatios(0.7, 0.1, 0.2)
+    assert len(features.experiment_config_fingerprint(config)) == 64
+
+
+def test_unknown_config_key_fails_loudly(tmp_path: Path) -> None:
+    """Misspelled or unsupported fields cannot silently fall back."""
+    path = tmp_path / "experiment.yaml"
+    text = (PROJECT_ROOT / "configs" / "experiment.yaml").read_text(
+        encoding="utf-8"
+    )
+    path.write_text(text + "\nfilters:\n  min_rating: 800\n", encoding="utf-8")
+    with pytest.raises(features.FeatureError, match="unsupported keys"):
+        features.load_experiment_config(path)
+
+
+def test_missing_config_fails_loudly(tmp_path: Path) -> None:
+    """A typo in the config path cannot silently activate defaults."""
+    with pytest.raises(features.FeatureError, match="does not exist"):
+        features.load_experiment_config(tmp_path / "missing.yaml")
 
 
 def _source_frame() -> pd.DataFrame:
@@ -54,6 +84,18 @@ def test_feature_derivation_and_tag_encoding() -> None:
     assert model["tag__math"].tolist() == [1, 1, 0]
     assert "tag__implementation" not in model.columns
     assert metadata["target_column"] == "rating"
+
+
+def test_disabling_tags_removes_all_tag_derived_features() -> None:
+    """include_tags=false excludes both one-hot tags and tag_count."""
+    model, metadata = features.build_model_table(
+        _source_frame(),
+        features.ExperimentConfig(include_tags=False),
+    )
+
+    assert not any(column.startswith("tag__") for column in model.columns)
+    assert "tag_count" not in metadata["feature_columns"]
+    assert metadata["tag_feature_map"] == {}
 
 
 def test_feature_outputs_and_config_file(
@@ -102,6 +144,7 @@ def test_feature_outputs_and_config_file(
     )
     assert "points" not in columns["feature_columns"]
     assert columns["config"]["random_seed"] == 7
+    assert len(columns["config_fingerprint_sha256"]) == 64
     summary = json.loads(
         paths["feature_summary"].read_text(encoding="utf-8")
     )

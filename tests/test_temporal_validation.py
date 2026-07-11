@@ -188,7 +188,12 @@ def test_run_temporal_validation_writes_outputs(tmp_path: Path) -> None:
         json.dumps({"feature_columns": _feature_columns()}),
         encoding="utf-8",
     )
-    config_path.write_text("project:\n  random_seed: 7\n", encoding="utf-8")
+    config_path.write_text(
+        (PROJECT_ROOT / "configs" / "experiment.yaml")
+        .read_text(encoding="utf-8")
+        .replace("random_seed: 42", "random_seed: 7"),
+        encoding="utf-8",
+    )
 
     paths = temporal_validation.run_temporal_validation(
         config_path=config_path,

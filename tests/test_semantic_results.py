@@ -54,6 +54,16 @@ def _metrics_frame() -> pd.DataFrame:
                     "R2": 0.5,
                     "within_100": 0.2,
                     "within_200": 0.4,
+                    "validation_MAE": (
+                        200.0
+                        if setting == "metadata_plus_tfidf"
+                        else 400.0
+                        if setting == "full_api_reference"
+                        else mae + 10.0
+                    ),
+                    "selection_split": "valid",
+                    "report_split": "test",
+                    "selection_rank": 1,
                 }
             )
     return pd.DataFrame(rows)
@@ -147,6 +157,18 @@ def test_key_findings_json_schema() -> None:
     assert "conservative_limitations" in payload
     assert "coverage" in payload
     assert "improvements" in payload
+    assert (
+        payload["validation_selected_setting_test_report"]["contest_grouped"][
+            "feature_setting"
+        ]
+        == "metadata_plus_tfidf"
+    )
+    assert (
+        payload["validation_selected_setting_test_report"]["contest_grouped"][
+            "test_MAE"
+        ]
+        == 312.0
+    )
 
 
 def test_figure_generation_smoke_test(tmp_path: Path) -> None:

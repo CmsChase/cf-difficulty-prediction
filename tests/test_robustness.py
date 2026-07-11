@@ -244,7 +244,12 @@ def test_run_robustness_writes_outputs(tmp_path: Path) -> None:
         engine="pyarrow",
         index=False,
     )
-    config_path.write_text("project:\n  random_seed: 7\n", encoding="utf-8")
+    config_path.write_text(
+        (PROJECT_ROOT / "configs" / "experiment.yaml")
+        .read_text(encoding="utf-8")
+        .replace("random_seed: 42", "random_seed: 7"),
+        encoding="utf-8",
+    )
 
     paths = robustness.run_robustness(
         config_path=config_path,
