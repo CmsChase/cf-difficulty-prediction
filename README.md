@@ -23,6 +23,8 @@ If you only want the main idea, key results, and how to read the project quickly
 
 Useful companion notes:
 - [Public erratum](docs/ERRATUM_2026-07-10.md)
+- [Prospective v2 protocol draft](docs/PROSPECTIVE_PROTOCOL_V2_DRAFT.md)
+- [Prospective v1 retirement record](docs/PROSPECTIVE_V1_RETIREMENT.md)
 - [Data and artifact manifest](docs/data_manifest.md)
 - [Error analysis](docs/error_analysis.md)
 
@@ -99,6 +101,7 @@ scripts/                 Local helper scripts
 src/cf_diff/             Pipeline modules
 tests/                   Unit tests
 outputs/paper_tables/    Small committed paper-ready CSV tables
+prospective/             Pre-enrollment protocol and future public evidence
 ```
 
 Large generated data, raw API snapshots, cached HTML pages, trained model
@@ -115,6 +118,25 @@ records the split ratios that actually governed historical runs.
 Candidate models are now selected only on validation MAE. Test metrics are
 joined only after selection, and test-only exposure comparisons are explicitly
 exploratory.
+
+## Prospective validation status
+
+The replacement prospective protocol is currently a **draft**, with a
+tentative cohort start of 2026-08-15. No contest is enrolled and no v2 model is
+frozen. The earlier v1 proposal was
+[superseded before enrollment](docs/PROSPECTIVE_V1_RETIREMENT.md) because its
+T0 capture and schema-inspection path was incomplete.
+
+The new capture command accepts only an explicit contest id, problem indices,
+and contest start; it directly fetches public statement pages without reading
+a metadata table. Its model CSV has an exact allowlist, while request details
+and hashes remain in a separate sidecar. The predictor checks the file schema
+before row values and cryptographically binds predictions to that sidecar,
+input, frozen model, and freeze manifest.
+
+See [`prospective/README.md`](prospective/README.md) for the guarded command
+chain and the remaining freeze gates. Real enrollment stays disabled until the
+append-only ledger and public timestamp workflow are merged and dry-run.
 
 There are two different reproducibility paths:
 

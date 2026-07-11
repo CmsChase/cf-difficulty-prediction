@@ -4,6 +4,10 @@
 > A 2026-07-10 code audit identified a split-configuration mismatch and
 > test-informed model selection; see the
 > [public erratum](docs/ERRATUM_2026-07-10.md).
+>
+> A replacement prospective protocol is now in
+> [pre-enrollment draft](docs/PROSPECTIVE_PROTOCOL_V2_DRAFT.md). The earlier
+> v1 proposal was [superseded before enrollment](docs/PROSPECTIVE_V1_RETIREMENT.md).
 
 This project studies a simple question: can Codeforces problem difficulty be predicted from public problem-level information?
 
@@ -62,10 +66,11 @@ Recommended order:
 
 1. [`docs/ERRATUM_2026-07-10.md`](docs/ERRATUM_2026-07-10.md) for the governance correction.
 2. [`README.md`](README.md) for the project overview and corrected pipeline.
-3. [`paper/paper_v5_full_en_final.pdf`](paper/paper_v5_full_en_final.pdf) for the historical full study.
-4. [`paper/paper_v6_semantic_tfidf_final.pdf`](paper/paper_v6_semantic_tfidf_final.pdf) for the historical TF-IDF experiment.
-5. [`docs/error_analysis.md`](docs/error_analysis.md) for model failure patterns.
-6. [`docs/data_manifest.md`](docs/data_manifest.md) for data and artifact limitations.
+3. [`docs/PROSPECTIVE_PROTOCOL_V2_DRAFT.md`](docs/PROSPECTIVE_PROTOCOL_V2_DRAFT.md) for the future blind-test design.
+4. [`paper/paper_v5_full_en_final.pdf`](paper/paper_v5_full_en_final.pdf) for the historical full study.
+5. [`paper/paper_v6_semantic_tfidf_final.pdf`](paper/paper_v6_semantic_tfidf_final.pdf) for the historical TF-IDF experiment.
+6. [`docs/error_analysis.md`](docs/error_analysis.md) for model failure patterns.
+7. [`docs/data_manifest.md`](docs/data_manifest.md) for data and artifact limitations.
 
 ## What the project does not claim
 
