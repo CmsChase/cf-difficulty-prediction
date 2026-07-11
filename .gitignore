@@ -9,6 +9,7 @@ venv/
 data/raw/
 data/interim/
 data/processed/
+prospective/raw/
 
 # Model artifacts and logs
 outputs/baselines/models/
