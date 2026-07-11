@@ -1,0 +1,25 @@
+# Historical v5/v6 execution settings.
+#
+# The published v5/v6 artifacts were generated after the old loader silently
+# fell back to 0.70/0.15/0.15 for both split strategies. Keep this file only
+# for auditing legacy artifacts. New confirmatory work uses experiment.yaml.
+schema_version: 1
+
+project:
+  name: cf_difficulty_prediction_legacy_v6
+  random_seed: 42
+
+features:
+  include_points: true
+  include_tags: true
+  min_tag_frequency: 5
+
+splits:
+  contest_grouped:
+    train_frac: 0.70
+    valid_frac: 0.15
+    test_frac: 0.15
+  forward_time:
+    train_frac: 0.70
+    valid_frac: 0.15
+    test_frac: 0.15

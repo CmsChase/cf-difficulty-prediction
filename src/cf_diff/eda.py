@@ -17,6 +17,11 @@ import matplotlib
 import numpy as np
 import pandas as pd
 
+from cf_diff.features import (
+    experiment_config_fingerprint,
+    load_experiment_config,
+)
+
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt  # noqa: E402
 
@@ -348,6 +353,7 @@ def build_dataset_summary(
     feature_path: Path,
     contest_split_path: Path,
     time_split_path: Path,
+    config_fingerprint_sha256: str | None = None,
 ) -> dict[str, object]:
     """Build a machine-readable summary for the EDA report."""
     _require_columns(
@@ -361,7 +367,7 @@ def build_dataset_summary(
     top_tags = tag_frequency.head(10).loc[:, ["tag", "count"]].to_dict(
         orient="records"
     )
-    return {
+    summary: dict[str, object] = {
         "inputs": {
             "config_path": config_path.as_posix(),
             "config_exists": config_path.exists(),
@@ -401,6 +407,9 @@ def build_dataset_summary(
             "forward_time": _split_size_summary(time_split),
         },
     }
+    if config_fingerprint_sha256 is not None:
+        summary["config_fingerprint_sha256"] = config_fingerprint_sha256
+    return summary
 
 
 def prepare_histogram_values(frame: pd.DataFrame, column: str) -> pd.Series:
@@ -639,6 +648,8 @@ def run_eda(
     log_path: Path,
 ) -> dict[str, Path]:
     """Run the full local EDA pipeline and write all required artifacts."""
+    config = load_experiment_config(config_path)
+    config_fingerprint = experiment_config_fingerprint(config)
     logger = configure_logger(log_path)
     try:
         processed = pd.read_parquet(processed_path, engine="pyarrow")
@@ -683,6 +694,7 @@ def run_eda(
             feature_path=feature_path,
             contest_split_path=contest_split_path,
             time_split_path=time_split_path,
+            config_fingerprint_sha256=config_fingerprint,
         )
 
         paths = {
