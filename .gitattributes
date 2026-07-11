@@ -1,0 +1,6 @@
+# Keep hash-verified prospective artifacts byte-stable across platforms.
+configs/prospective_protocol_*.json text eol=lf
+prospective/*.json text eol=lf
+prospective/**/*.json text eol=lf
+prospective/**/*.jsonl text eol=lf
+prospective/**/*.csv text eol=lf
