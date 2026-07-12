@@ -1,5 +1,12 @@
 # Quick Overview
 
+> **Research status:** The numbers below are retained as retrospective results.
+> A 2026-07-10 code audit identified a split-configuration mismatch and
+> test-informed model selection; see the
+> [public erratum](docs/ERRATUM_2026-07-10.md).
+> The historical numbers remain available for reference; a full rerun under
+> the corrected configuration has not yet replaced them.
+
 This project studies a simple question: can Codeforces problem difficulty be predicted from public problem-level information?
 
 The short answer is yes, but the answer depends heavily on what information is allowed. After a problem has been published, solved-count behavior is very useful. For a colder setting where solved counts are removed, prediction becomes much harder, so the project also tests whether problem-statement features can help.
@@ -26,7 +33,7 @@ The processed model table contains:
 
 Large raw API snapshots, cached HTML pages, logs, and generated experiment outputs are not committed. See [`docs/data_manifest.md`](docs/data_manifest.md) for details.
 
-## Main results
+## Historical results (retrospective)
 
 The strongest simple post-publication signal is solved count. This is useful, but it also reflects exposure, age, visibility, and popularity, not only intrinsic difficulty.
 
@@ -55,11 +62,12 @@ TF-IDF alone is weak. Its value is mainly as an extra signal combined with metad
 
 Recommended order:
 
-1. [`README.md`](README.md) for the project overview.
-2. [`paper/paper_v5_full_en_final.pdf`](paper/paper_v5_full_en_final.pdf) for the main full study.
-3. [`paper/paper_v6_semantic_tfidf_final.pdf`](paper/paper_v6_semantic_tfidf_final.pdf) for the TF-IDF statement-text experiment.
-4. [`docs/error_analysis.md`](docs/error_analysis.md) for model failure patterns.
-5. [`docs/data_manifest.md`](docs/data_manifest.md) for data and artifact limitations.
+1. [`docs/ERRATUM_2026-07-10.md`](docs/ERRATUM_2026-07-10.md) for the governance correction.
+2. [`README.md`](README.md) for the project overview and corrected pipeline.
+3. [`paper/paper_v5_full_en_final.pdf`](paper/paper_v5_full_en_final.pdf) for the historical full study.
+4. [`paper/paper_v6_semantic_tfidf_final.pdf`](paper/paper_v6_semantic_tfidf_final.pdf) for the historical TF-IDF experiment.
+5. [`docs/error_analysis.md`](docs/error_analysis.md) for model failure patterns.
+6. [`docs/data_manifest.md`](docs/data_manifest.md) for data and artifact limitations.
 
 ## What the project does not claim
 

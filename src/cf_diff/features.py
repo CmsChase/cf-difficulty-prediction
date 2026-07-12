@@ -48,6 +48,8 @@ class SplitRatios:
 class ExperimentConfig:
     """Store feature and split settings with reproducible defaults."""
 
+    schema_version: int = 1
+    project_name: str = "cf_difficulty_prediction"
     random_seed: int = RANDOM_SEED
     grouped_split: SplitRatios = SplitRatios()
     forward_time_split: SplitRatios = SplitRatios()
@@ -173,20 +175,59 @@ def _mapping(value: object, key: str) -> Mapping[str, object]:
     return value
 
 
+def _require_known_keys(
+    value: Mapping[str, object],
+    allowed: set[str],
+    section: str,
+) -> None:
+    """Reject misspelled or unsupported config keys instead of ignoring them."""
+    unknown = sorted(str(key) for key in value if key not in allowed)
+    if unknown:
+        raise FeatureError(
+            f"Config section {section!r} has unsupported keys: {unknown}"
+        )
+
+
+def _require_bool(value: object, key: str) -> bool:
+    """Require a real boolean rather than relying on truthiness coercion."""
+    if not isinstance(value, bool):
+        raise FeatureError(f"Config key {key!r} must be true or false.")
+    return value
+
+
+def _require_int(value: object, key: str) -> int:
+    """Require an integer scalar while rejecting booleans."""
+    if isinstance(value, bool) or not isinstance(value, int):
+        raise FeatureError(f"Config key {key!r} must be an integer.")
+    return value
+
+
 def _read_ratios(
     config: Mapping[str, object],
     key: str,
     default: SplitRatios,
+    *,
+    field_names: tuple[str, str, str] = ("train", "valid", "test"),
+    required: bool = False,
 ) -> SplitRatios:
     """Read and validate one split-ratio mapping."""
     raw = config.get(key)
     if raw is None:
+        if required:
+            raise FeatureError(f"Config is missing required section {key!r}.")
         return default
     values = _mapping(raw, key)
+    _require_known_keys(values, set(field_names), key)
+    missing = [field for field in field_names if field not in values]
+    if required and missing:
+        raise FeatureError(
+            f"Config section {key!r} is missing required keys: {missing}"
+        )
+    train_key, valid_key, test_key = field_names
     ratios = SplitRatios(
-        train=float(values.get("train", default.train)),
-        valid=float(values.get("valid", default.valid)),
-        test=float(values.get("test", default.test)),
+        train=float(values.get(train_key, default.train)),
+        valid=float(values.get(valid_key, default.valid)),
+        test=float(values.get(test_key, default.test)),
     )
     validate_split_ratios(ratios, key)
     return ratios
@@ -204,10 +245,10 @@ def validate_split_ratios(ratios: SplitRatios, name: str) -> None:
 def load_experiment_config(
     path: Path = DEFAULT_CONFIG_PATH,
 ) -> ExperimentConfig:
-    """Load the concise YAML config, using defaults when the file is absent."""
+    """Load the experiment config and reject missing or ambiguous input."""
     defaults = ExperimentConfig()
     if not path.exists():
-        return defaults
+        raise FeatureError(f"Experiment config does not exist: {path}")
 
     text = path.read_text(encoding="utf-8")
     stripped = text.lstrip()
@@ -219,46 +260,145 @@ def load_experiment_config(
     else:
         raw_config = parse_simple_yaml(text)
 
-    features_section = raw_config.get("features", {})
-    if features_section is None:
-        features_section = {}
-    features = _mapping(features_section, "features")
-    include_points = features.get(
+    canonical_sections = {"schema_version", "project", "features", "splits"}
+    legacy_keys = {
+        "random_seed",
         "include_points",
-        raw_config.get("include_points", defaults.include_points),
-    )
-    include_tags = features.get(
         "include_tags",
-        raw_config.get("include_tags", defaults.include_tags),
-    )
-    min_tag_frequency = features.get(
         "min_tag_frequency",
-        raw_config.get(
+        "grouped_split",
+        "forward_time_split",
+    }
+    uses_canonical_schema = "schema_version" in raw_config
+
+    if uses_canonical_schema:
+        _require_known_keys(raw_config, canonical_sections, "root")
+        schema_version = _require_int(
+            raw_config.get("schema_version"),
+            "schema_version",
+        )
+        if schema_version != 1:
+            raise FeatureError(
+                f"Unsupported experiment config schema_version {schema_version}; "
+                "expected 1."
+            )
+
+        project = _mapping(raw_config.get("project"), "project")
+        _require_known_keys(project, {"name", "random_seed"}, "project")
+        project_name = project.get("name")
+        if not isinstance(project_name, str) or not project_name.strip():
+            raise FeatureError("Config key 'project.name' must be a non-empty string.")
+        random_seed = _require_int(
+            project.get("random_seed"),
+            "project.random_seed",
+        )
+
+        feature_values = _mapping(raw_config.get("features"), "features")
+        _require_known_keys(
+            feature_values,
+            {"include_points", "include_tags", "min_tag_frequency"},
+            "features",
+        )
+        required_feature_keys = {
+            "include_points",
+            "include_tags",
             "min_tag_frequency",
-            defaults.min_tag_frequency,
-        ),
-    )
-    config = ExperimentConfig(
-        random_seed=int(
-            raw_config.get("random_seed", defaults.random_seed)
-        ),
-        grouped_split=_read_ratios(
+        }
+        missing_feature_keys = sorted(required_feature_keys - set(feature_values))
+        if missing_feature_keys:
+            raise FeatureError(
+                "Config section 'features' is missing required keys: "
+                f"{missing_feature_keys}"
+            )
+        include_points = _require_bool(
+            feature_values["include_points"],
+            "features.include_points",
+        )
+        include_tags = _require_bool(
+            feature_values["include_tags"],
+            "features.include_tags",
+        )
+        min_tag_frequency = _require_int(
+            feature_values["min_tag_frequency"],
+            "features.min_tag_frequency",
+        )
+
+        split_values = _mapping(raw_config.get("splits"), "splits")
+        _require_known_keys(
+            split_values,
+            {"contest_grouped", "forward_time"},
+            "splits",
+        )
+        ratio_fields = ("train_frac", "valid_frac", "test_frac")
+        grouped_split = _read_ratios(
+            split_values,
+            "contest_grouped",
+            defaults.grouped_split,
+            field_names=ratio_fields,
+            required=True,
+        )
+        forward_time_split = _read_ratios(
+            split_values,
+            "forward_time",
+            defaults.forward_time_split,
+            field_names=ratio_fields,
+            required=True,
+        )
+    else:
+        _require_known_keys(raw_config, legacy_keys, "legacy root")
+        schema_version = 0
+        project_name = defaults.project_name
+        random_seed = _require_int(
+            raw_config.get("random_seed", defaults.random_seed),
+            "random_seed",
+        )
+        include_points = _require_bool(
+            raw_config.get("include_points", defaults.include_points),
+            "include_points",
+        )
+        include_tags = _require_bool(
+            raw_config.get("include_tags", defaults.include_tags),
+            "include_tags",
+        )
+        min_tag_frequency = _require_int(
+            raw_config.get("min_tag_frequency", defaults.min_tag_frequency),
+            "min_tag_frequency",
+        )
+        grouped_split = _read_ratios(
             raw_config,
             "grouped_split",
             defaults.grouped_split,
-        ),
-        forward_time_split=_read_ratios(
+        )
+        forward_time_split = _read_ratios(
             raw_config,
             "forward_time_split",
             defaults.forward_time_split,
-        ),
-        include_points=bool(include_points),
-        include_tags=bool(include_tags),
-        min_tag_frequency=int(min_tag_frequency),
+        )
+
+    config = ExperimentConfig(
+        schema_version=schema_version,
+        project_name=project_name.strip(),
+        random_seed=random_seed,
+        grouped_split=grouped_split,
+        forward_time_split=forward_time_split,
+        include_points=include_points,
+        include_tags=include_tags,
+        min_tag_frequency=min_tag_frequency,
     )
     if config.min_tag_frequency < 1:
         raise FeatureError("min_tag_frequency must be at least 1.")
     return config
+
+
+def experiment_config_fingerprint(config: ExperimentConfig) -> str:
+    """Return a stable SHA-256 fingerprint of the effective configuration."""
+    canonical = json.dumps(
+        asdict(config),
+        ensure_ascii=False,
+        sort_keys=True,
+        separators=(",", ":"),
+    ).encode("utf-8")
+    return hashlib.sha256(canonical).hexdigest()
 
 
 def _normalize_tags(value: object) -> list[str]:
@@ -388,11 +528,12 @@ def build_model_table(
         "index_letter",
         "index_number",
         "index_rank",
-        "tag_count",
         "solved_count",
         "solved_count_missing",
         "log_solved_count",
     ]
+    if config.include_tags:
+        structured_features.append("tag_count")
     if config.include_points:
         structured_features.extend(["has_points", "points"])
     feature_columns = [
@@ -476,6 +617,7 @@ def generate_features(
         feature_columns_payload = {
             **metadata,
             "config": asdict(config),
+            "config_fingerprint_sha256": experiment_config_fingerprint(config),
         }
         write_json(paths["feature_columns"], feature_columns_payload)
         tag_columns = [
@@ -495,6 +637,7 @@ def generate_features(
                 "missing_before_imputation"
             ],
             "random_seed": config.random_seed,
+            "config_fingerprint_sha256": experiment_config_fingerprint(config),
         }
         write_json(paths["feature_summary"], summary)
         logger.info(

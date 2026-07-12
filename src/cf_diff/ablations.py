@@ -28,6 +28,11 @@ from cf_diff.baselines import (
     make_preprocessed_estimator,
 )
 from cf_diff.features import write_json
+from cf_diff.model_selection import (
+    DEFAULT_METRIC_COLUMNS,
+    build_validation_ranked_report,
+    select_rank_one,
+)
 
 DEFAULT_CONFIG_PATH: Final[Path] = Path("configs/experiment.yaml")
 DEFAULT_FEATURE_PATH: Final[Path] = Path(
@@ -437,32 +442,61 @@ def build_drop_comparison(test_metrics: pd.DataFrame) -> pd.DataFrame:
     ).reset_index(drop=True)
 
 
+def build_locked_ablation_report(metrics: pd.DataFrame) -> pd.DataFrame:
+    """Select one algorithm on full-feature validation MAE and lock it."""
+    reference = metrics.loc[
+        metrics["feature_set_name"].eq("all_api_features")
+    ]
+    reference_ranking = build_validation_ranked_report(
+        reference,
+        group_columns=("strategy",),
+        candidate_columns=("model_name",),
+        metric_columns=DEFAULT_METRIC_COLUMNS,
+    )
+    selected_models = select_rank_one(reference_ranking).loc[
+        :, ["strategy", "model_name"]
+    ]
+    locked = metrics.merge(
+        selected_models,
+        on=["strategy", "model_name"],
+        how="inner",
+        validate="many_to_one",
+    )
+    report = build_validation_ranked_report(
+        locked,
+        group_columns=("strategy", "feature_set_name"),
+        candidate_columns=("model_name",),
+        metric_columns=DEFAULT_METRIC_COLUMNS,
+    )
+    return select_rank_one(report).sort_values(
+        ["strategy", "feature_set_name"],
+        kind="mergesort",
+    ).reset_index(drop=True)
+
+
 def build_ablation_summary(
     test_metrics: pd.DataFrame,
     drop_comparison: pd.DataFrame,
 ) -> dict[str, object]:
     """Build machine-readable ablation summary."""
-    best_by_strategy_model: dict[str, dict[str, object]] = {}
-    for (strategy, model_name), group in test_metrics.groupby(
-        ["strategy", "model_name"],
-        sort=True,
-    ):
+    validation_selected_by_strategy: dict[str, dict[str, object]] = {}
+    for strategy, group in test_metrics.groupby("strategy", sort=True):
+        selection_column = (
+            "validation_MAE" if "validation_MAE" in group.columns else "MAE"
+        )
         row = group.sort_values(
-            ["MAE", "feature_set_name"],
+            [selection_column, "feature_set_name"],
             kind="mergesort",
         ).iloc[0]
-        best_by_strategy_model[f"{strategy}::{model_name}"] = {
+        validation_selected_by_strategy[str(strategy)] = {
             "strategy": strategy,
-            "model_name": model_name,
+            "model_name": row["model_name"],
             "feature_set_name": row["feature_set_name"],
+            "validation_MAE": _finite_float(row.get("validation_MAE")),
             "test_MAE": _finite_float(row["MAE"]),
             "within_200": _finite_float(row["within_200"]),
             "feature_count": int(row["feature_count"]),
         }
-    best_overall_row = test_metrics.sort_values(
-        ["MAE", "strategy", "model_name", "feature_set_name"],
-        kind="mergesort",
-    ).iloc[0]
     importance_notes = []
     for (strategy, model_name), group in drop_comparison.groupby(
         ["strategy", "model_name"],
@@ -475,13 +509,15 @@ def build_ablation_summary(
         ).iloc[0]
         if float(row["MAE_difference"]) > 0:
             note = (
-                f"Removing {row['removed_group']} increases test MAE the most "
-                "among one-group drops for this strategy/model."
+                f"Removing {row['removed_group']} has the largest descriptively "
+                "observed test-MAE increase among the pre-specified one-group "
+                "drops for this strategy/model; this comparison is exploratory."
             )
         else:
             note = (
-                "No one-group drop increased test MAE relative to all API "
-                "features for this strategy/model."
+                "No pre-specified one-group drop descriptively increased test "
+                "MAE relative to all API features for this strategy/model; "
+                "this comparison is exploratory."
             )
         importance_notes.append(
             {
@@ -494,15 +530,9 @@ def build_ablation_summary(
         )
     return {
         "created_at_utc": datetime.now(timezone.utc).isoformat(timespec="seconds"),
-        "best_feature_set_by_strategy_and_model": best_by_strategy_model,
-        "best_overall_ablation_by_test_MAE": {
-            "strategy": best_overall_row["strategy"],
-            "model_name": best_overall_row["model_name"],
-            "feature_set_name": best_overall_row["feature_set_name"],
-            "test_MAE": _finite_float(best_overall_row["MAE"]),
-            "within_200": _finite_float(best_overall_row["within_200"]),
-            "feature_count": int(best_overall_row["feature_count"]),
-        },
+        "validation_selected_feature_set_test_report": (
+            validation_selected_by_strategy
+        ),
         "drop_comparison": drop_comparison.to_dict(orient="records"),
         "feature_group_importance_notes": importance_notes,
     }
@@ -541,8 +571,9 @@ def plot_ablation_metric(
     if subset.empty:
         _save_figure(_empty_figure(title), path)
         return
+    order_metric = "validation_MAE" if "validation_MAE" in subset else "MAE"
     feature_sets = (
-        subset.sort_values(["MAE", "feature_set_name"])["feature_set_name"]
+        subset.sort_values([order_metric, "feature_set_name"])["feature_set_name"]
         .drop_duplicates()
         .tolist()
     )
@@ -644,9 +675,10 @@ def run_ablations(
             ["strategy", "model_name", "MAE", "feature_set_name"],
             kind="mergesort",
         ).reset_index(drop=True)
-        drop_comparison = build_drop_comparison(test_metrics)
+        locked_test_report = build_locked_ablation_report(metrics)
+        drop_comparison = build_drop_comparison(locked_test_report)
         feature_definitions = feature_group_definitions_table(feature_sets)
-        summary = build_ablation_summary(test_metrics, drop_comparison)
+        summary = build_ablation_summary(locked_test_report, drop_comparison)
 
         output_dir = output_dir.resolve()
         summary_dir = output_dir / "summary"
@@ -659,6 +691,9 @@ def run_ablations(
             "ablation_summary": summary_dir / "ablation_summary.json",
             "ablation_metrics_all": tables_dir / "ablation_metrics_all.csv",
             "ablation_metrics_test": tables_dir / "ablation_metrics_test.csv",
+            "locked_test_results": (
+                tables_dir / "ablation_validation_locked_test.csv"
+            ),
             "feature_group_definitions": (
                 tables_dir / "feature_group_definitions.csv"
             ),
@@ -684,17 +719,18 @@ def run_ablations(
         write_json(paths["ablation_summary"], summary)
         metrics.to_csv(paths["ablation_metrics_all"], index=False)
         test_metrics.to_csv(paths["ablation_metrics_test"], index=False)
+        locked_test_report.to_csv(paths["locked_test_results"], index=False)
         feature_definitions.to_csv(paths["feature_group_definitions"], index=False)
         drop_comparison.to_csv(paths["ablation_drop_comparison"], index=False)
         for strategy in STRATEGIES:
             plot_ablation_metric(
-                test_metrics,
+                locked_test_report,
                 strategy,
                 "MAE",
                 paths[f"ablation_mae_by_feature_set_{strategy}"],
             )
             plot_ablation_metric(
-                test_metrics,
+                locked_test_report,
                 strategy,
                 "within_200",
                 paths[f"ablation_within_200_by_feature_set_{strategy}"],

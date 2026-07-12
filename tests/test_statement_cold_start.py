@@ -264,19 +264,19 @@ def test_metric_calculation() -> None:
 
 
 def test_best_by_setting_summary_generation() -> None:
-    """Best-by-setting selects the lowest test MAE model per strategy/setting."""
-    test_metrics = pd.DataFrame(
+    """Best-by-setting uses validation even when test favors another model."""
+    metrics = pd.DataFrame(
         {
             "strategy": ["contest_grouped"] * 4,
-            "split_name": ["test"] * 4,
-            "feature_setting": ["metadata_only", "metadata_only"] * 2,
+            "split_name": ["valid", "valid", "test", "test"],
+            "feature_setting": ["metadata_only"] * 4,
             "model_name": [
                 "ridge_regression",
                 "hist_gradient_boosting_regressor",
-                "random_forest_regressor",
                 "ridge_regression",
+                "hist_gradient_boosting_regressor",
             ],
-            "MAE": [300.0, 250.0, 275.0, 260.0],
+            "MAE": [240.0, 260.0, 300.0, 250.0],
             "RMSE": [1.0, 1.0, 1.0, 1.0],
             "R2": [0.0, 0.0, 0.0, 0.0],
             "within_100": [0.0, 0.0, 0.0, 0.0],
@@ -287,11 +287,12 @@ def test_best_by_setting_summary_generation() -> None:
         }
     )
 
-    best = statement_cold_start.build_best_by_setting(test_metrics)
+    best = statement_cold_start.build_best_by_setting(metrics)
 
     assert len(best) == 1
-    assert best.iloc[0]["model_name"] == "hist_gradient_boosting_regressor"
-    assert best.iloc[0]["MAE"] == 250.0
+    assert best.iloc[0]["model_name"] == "ridge_regression"
+    assert best.iloc[0]["validation_MAE"] == 240.0
+    assert best.iloc[0]["MAE"] == 300.0
 
 
 def test_cli_smoke_with_missing_statement_row(tmp_path: Path) -> None:
@@ -321,7 +322,12 @@ def test_cli_smoke_with_missing_statement_row(tmp_path: Path) -> None:
         engine="pyarrow",
         index=False,
     )
-    config_path.write_text("project:\n  random_seed: 7\n", encoding="utf-8")
+    config_path.write_text(
+        (PROJECT_ROOT / "configs" / "experiment.yaml")
+        .read_text(encoding="utf-8")
+        .replace("random_seed: 42", "random_seed: 7"),
+        encoding="utf-8",
+    )
 
     paths = statement_cold_start.run_statement_cold_start(
         config_path=config_path,

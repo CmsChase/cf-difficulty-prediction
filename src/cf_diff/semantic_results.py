@@ -60,6 +60,10 @@ REQUIRED_METRIC_COLUMNS: Final[tuple[str, ...]] = (
     "R2",
     "within_100",
     "within_200",
+    "validation_MAE",
+    "selection_split",
+    "report_split",
+    "selection_rank",
 )
 CONSERVATIVE_LIMITATIONS: Final[tuple[str, ...]] = (
     "TF-IDF is classical bag-of-words modeling, not deep semantic understanding.",
@@ -67,13 +71,14 @@ CONSERVATIVE_LIMITATIONS: Final[tuple[str, ...]] = (
     "Tags may be post-contest metadata, so this is metadata/statement cold-start, not strict pre-contest prediction.",
     "The full API reference in this v6 module uses ridge regression for comparison consistency.",
     "Generated outputs are local analysis artifacts.",
+    "Historical v6 outcomes are retrospective under the 2026-07-10 public erratum.",
 )
 KEY_FINDINGS: Final[tuple[str, ...]] = (
     "TF-IDF alone is weak.",
     "Metadata + TF-IDF improves over metadata only.",
     "Metadata + text-light + TF-IDF improves over metadata + text-light.",
-    "The improvement is larger on forward-time validation than contest-grouped validation.",
-    "The v6 full_api_reference is a ridge-based internal comparison and should not replace the canonical v5 full API benchmark.",
+    "In the historical locked test report, the improvement is larger for forward-time than contest-grouped evaluation.",
+    "The v6 full_api_reference is a ridge-based internal comparison and should not replace the historical v5 full API benchmark.",
 )
 
 
@@ -139,7 +144,7 @@ def _require_columns(frame: pd.DataFrame, columns: Sequence[str], table_name: st
 
 
 def load_metrics_csv(path: Path) -> pd.DataFrame:
-    """Load semantic TF-IDF metrics and keep deterministic test rows."""
+    """Load validation-selected semantic settings and locked test reports."""
 
     if not path.exists():
         raise SemanticResultsError(f"Metrics file does not exist: {path}")
@@ -149,6 +154,16 @@ def load_metrics_csv(path: Path) -> pd.DataFrame:
         metrics = metrics.loc[metrics["split_name"].eq("test")].copy()
     if metrics.empty:
         raise SemanticResultsError("Metrics CSV contains no test rows.")
+    if not metrics["selection_split"].eq("valid").all():
+        raise SemanticResultsError("Metrics were not selected on validation rows.")
+    if not metrics["report_split"].eq("test").all():
+        raise SemanticResultsError("Metrics are not locked test reports.")
+    if not pd.to_numeric(metrics["selection_rank"], errors="coerce").eq(1).all():
+        raise SemanticResultsError("Metrics contain non-selected candidate rows.")
+    if metrics.duplicated(["strategy", "feature_setting"]).any():
+        raise SemanticResultsError(
+            "Metrics contain duplicate strategy/feature-setting reports."
+        )
     order = {setting: idx for idx, setting in enumerate(SETTING_ORDER)}
     metrics["_setting_order"] = metrics["feature_setting"].map(order).fillna(999)
     metrics = metrics.sort_values(
@@ -179,6 +194,7 @@ def build_results_table(metrics: pd.DataFrame) -> pd.DataFrame:
         "row_count",
         "feature_count",
         "uses_tfidf",
+        "validation_MAE",
         "MAE",
         "RMSE",
         "R2",
@@ -191,12 +207,16 @@ def build_results_table(metrics: pd.DataFrame) -> pd.DataFrame:
 
 
 def _metric_for_setting(group: pd.DataFrame, setting: str) -> pd.Series | None:
-    """Return the best row for one feature setting, if present."""
+    """Return the single validation-selected row for one setting, if present."""
 
     rows = group.loc[group["feature_setting"].eq(setting)]
     if rows.empty:
         return None
-    return rows.sort_values(["MAE", "feature_setting"], kind="mergesort").iloc[0]
+    if len(rows) != 1:
+        raise SemanticResultsError(
+            f"Setting {setting!r} has {len(rows)} locked test rows; expected one."
+        )
+    return rows.iloc[0]
 
 
 def compute_improvements(metrics: pd.DataFrame) -> pd.DataFrame:
@@ -308,6 +328,7 @@ def render_markdown_summary(
     metric_columns = [
         "feature_setting",
         "model_name",
+        "validation_MAE",
         "MAE",
         "RMSE",
         "R2",
@@ -367,12 +388,18 @@ def build_key_findings_payload(
 ) -> dict[str, object]:
     """Build machine-readable key findings for downstream paper packaging."""
 
-    best_by_strategy: dict[str, dict[str, object]] = {}
+    selected_by_strategy: dict[str, dict[str, object]] = {}
     for strategy, group in metrics.groupby("strategy", sort=True):
-        best = group.sort_values(["MAE", "feature_setting"], kind="mergesort").iloc[0]
-        best_by_strategy[str(strategy)] = {
+        best = group.sort_values(
+            ["validation_MAE", "feature_setting"],
+            kind="mergesort",
+        ).iloc[0]
+        selected_by_strategy[str(strategy)] = {
             "feature_setting": str(best["feature_setting"]),
-            "MAE": float(best["MAE"]),
+            "selection_split": "valid",
+            "validation_MAE": float(best["validation_MAE"]),
+            "report_split": "test",
+            "test_MAE": float(best["MAE"]),
             "within_200": float(best["within_200"]),
         }
     return {
@@ -389,7 +416,7 @@ def build_key_findings_payload(
             "text_available_count": summary.get("text_available_count"),
             "text_available_rate": summary.get("text_available_rate"),
         },
-        "best_by_strategy": best_by_strategy,
+        "validation_selected_setting_test_report": selected_by_strategy,
         "improvements": improvements.to_dict(orient="records"),
     }
 

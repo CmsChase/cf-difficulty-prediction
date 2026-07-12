@@ -2,9 +2,18 @@
 
 [![Tests](https://github.com/CmsChase/cf-difficulty-prediction/actions/workflows/tests.yml/badge.svg)](https://github.com/CmsChase/cf-difficulty-prediction/actions/workflows/tests.yml)
 
-A reproducible v5 research pipeline for predicting Codeforces problem ratings
-from official API metadata, solved statistics, exposure-aware features, and
-lightweight statement-structure features.
+A research pipeline for predicting Codeforces problem ratings from official API
+metadata, solved statistics, exposure-aware features, and lightweight
+statement-structure features. Historical paper artifacts remain available for
+transparent comparison with the corrected evaluation pipeline.
+
+> **Research status (updated 2026-07-10):** Earlier paper results are retained
+> for transparency and should be interpreted as retrospective. A code audit
+> identified a split-configuration mismatch and test-informed model selection;
+> the corrected controls and scope are documented in the
+> [public erratum](docs/ERRATUM_2026-07-10.md).
+> The historical numbers remain available for reference; a full rerun under
+> the corrected configuration has not yet replaced them.
 
 ![Project overview](docs/project_overview.png)
 
@@ -15,19 +24,20 @@ If you only want the main idea, key results, and how to read the project quickly
 > **Cold-start note:** Cold-start here means no solved-count behavior, not necessarily strict pre-contest prediction. Tags, metadata, and statement availability may not exactly match a real pre-contest setting.
 
 Useful companion notes:
+- [Public erratum](docs/ERRATUM_2026-07-10.md)
 - [Data and artifact manifest](docs/data_manifest.md)
 - [Error analysis](docs/error_analysis.md)
 
-## Project snapshot
+## Historical project snapshot (retrospective)
 
-| Experiment | Main setting | Best / key result | Interpretation |
+| Experiment | Main setting | Legacy reported result | Current interpretation |
 |---|---|---:|---|
-| Contest-grouped prediction | HGB full API | MAE 166.9, within +/-200 = 69.7% | Generalizes to unseen contests |
-| Forward-time prediction | RF full API | MAE 152.5, within +/-200 = 71.2% | Tests chronological generalization |
-| Solved-only baseline | solved-count only | MAE 227-274 | Strongest simple public signal |
-| Cold-start prediction | metadata only | MAE 318-332 | New-problem prediction is much harder |
-| v5 cold-start extension | metadata + text-light | MAE improves by 33.0-42.3 | Statement structure adds cold-start signal |
-| Rolling temporal validation | full API + age norm | average MAE 146.0 | Best across rolling chronological folds |
+| Contest-grouped prediction | HGB full API | MAE 166.9, within +/-200 = 69.7% | Legacy descriptive evaluation |
+| Forward-time prediction | RF full API | MAE 152.5, within +/-200 = 71.2% | Legacy descriptive evaluation |
+| Solved-only baseline | solved-count only | MAE 227-274 | Hypothesis-generating comparison |
+| Cold-start prediction | metadata only | MAE 318-332 | Legacy descriptive evaluation |
+| Statement-structure extension | metadata + text-light | MAE improves by 33.0-42.3 | Requires future confirmation |
+| Rolling temporal validation | full API + age norm | average MAE 146.0 | Internal temporal analysis, not the future test |
 
 ## Research question
 
@@ -48,7 +58,7 @@ This project separates two settings:
 > availability may not exactly match a real pre-contest setting; the project
 > treats this limitation explicitly.
 
-## Main findings
+## Historical findings (retrospective)
 
 - The processed dataset contains 10,979 rated `PROGRAMMING` problems from 1,948
   contests.
@@ -60,7 +70,7 @@ This project separates two settings:
 - Removing solved features causes the largest MAE increase in ablation studies.
 - Cold-start metadata-only prediction is substantially harder than
   post-publication prediction.
-- The v5 statement text-light extension improves cold-start prediction beyond
+- The statement text-light experiment improves cold-start prediction beyond
   metadata alone:
   - contest-grouped: MAE 317.1 -> 284.0;
   - forward-time: MAE 331.4 -> 289.1.
@@ -86,7 +96,7 @@ This project separates two settings:
 ```text
 configs/                 Experiment configuration
 docs/                    Overview documentation assets
-paper/                   Final v5 paper, figures, and historical paper artifacts
+paper/                   Historical papers and generated figures
 scripts/                 Local helper scripts
 src/cf_diff/             Pipeline modules
 tests/                   Unit tests
@@ -95,6 +105,27 @@ outputs/paper_tables/    Small committed paper-ready CSV tables
 
 Large generated data, raw API snapshots, cached HTML pages, trained model
 artifacts, logs, and experiment outputs are intentionally not committed.
+
+## Configuration and historical interpretation
+
+The canonical config is [`configs/experiment.yaml`](configs/experiment.yaml).
+It is schema-versioned, rejects missing/unknown settings, and its effective
+SHA-256 fingerprint is written into downstream metadata. The file
+[`configs/experiment_legacy_v6.yaml`](configs/experiment_legacy_v6.yaml)
+records the split ratios that actually governed historical runs.
+
+Candidate models are now selected only on validation MAE. Test metrics are
+joined only after selection, and test-only exposure comparisons are explicitly
+exploratory.
+
+There are two different reproducibility paths:
+
+- **Corrected pipeline:** run the commands below with
+  `configs/experiment.yaml`.
+- **Historical audit:** the legacy config records the effective old ratios,
+  but it does not by itself recreate a paper. Exact historical reproduction
+  also requires the corresponding Git tag and the original local data
+  snapshot, which is not fully committed to this repository.
 
 ## Setup
 
@@ -120,7 +151,7 @@ python -m cf_diff.robustness --config configs/experiment.yaml --processed-path d
 python -m cf_diff.statement_cold_start --feature-path data/processed/features/model_table.parquet --statement-feature-path data/processed/statement_features/statement_features.parquet --output-dir outputs/statement_cold_start --log-path outputs/logs/statement_cold_start.log
 ```
 
-## v5 statement text-light feature extraction
+## Statement text-light feature extraction
 
 If statement features need to be regenerated locally:
 
@@ -144,10 +175,10 @@ The GitHub Pages site includes an illustrative browser-side demo for intuition.
 It is heuristic, does not run trained research models, and is not part of the
 reported experiments.
 
-## v6 Semantic TF-IDF Extension
+## Semantic TF-IDF extension
 
-v6 is a separate semantic statement-text extension on top of the completed v5
-research project. It extends cold-start prediction with classical TF-IDF
+The historical semantic statement-text experiment extends
+cold-start prediction with classical TF-IDF
 features extracted from normalized Codeforces problem-statement text.
 
 This is not BERT, transformers, embeddings, LLMs, or deep semantic
@@ -155,22 +186,22 @@ understanding. It is a lightweight bag-of-words semantic baseline designed to
 test whether statement text adds signal beyond metadata and v5 text-light
 structure features.
 
-Standalone v6 paper artifacts:
+Standalone paper artifacts:
 
 - [`paper/paper_v6_semantic_tfidf.md`](paper/paper_v6_semantic_tfidf.md)
 - [`paper/paper_v6_semantic_tfidf_final.pdf`](paper/paper_v6_semantic_tfidf_final.pdf)
 
-Main v6 findings:
+Main historical findings:
 
 - TF-IDF alone is weak.
 - Metadata + TF-IDF improves over metadata only.
 - Metadata + text-light + TF-IDF improves over metadata + text-light.
 - The improvement is larger on forward-time validation than contest-grouped
   validation.
-- v6 does not replace the canonical v5 full API benchmark; its
+- This extension does not replace the historical full API benchmark; its
   `full_api_reference` is a ridge-based internal comparison.
 
-Compact v6 results:
+Compact historical results:
 
 - Contest-grouped: metadata_only MAE 340.5 -> metadata_plus_tfidf MAE 311.1.
 - Forward-time: metadata_only MAE 365.4 -> metadata_plus_tfidf MAE 325.4.
@@ -185,7 +216,8 @@ Compact v6 results:
 python -m pytest -q
 ```
 
-Current tested state: `119 passed`.
+The CI badge above and the command output are the source of truth for the
+current test count.
 
 ## Notes on interpretation
 

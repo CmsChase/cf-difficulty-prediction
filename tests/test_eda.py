@@ -137,6 +137,7 @@ def test_run_eda_writes_required_outputs(tmp_path: Path) -> None:
     time_split_path = tmp_path / "forward_time_split.parquet"
     output_dir = tmp_path / "eda"
     log_path = tmp_path / "logs" / "eda.log"
+    config_path = tmp_path / "experiment.yaml"
 
     _processed_frame().to_parquet(processed_path, engine="pyarrow", index=False)
     _feature_frame().to_parquet(feature_path, engine="pyarrow", index=False)
@@ -150,9 +151,15 @@ def test_run_eda_writes_required_outputs(tmp_path: Path) -> None:
         engine="pyarrow",
         index=False,
     )
+    config_path.write_text(
+        (PROJECT_ROOT / "configs" / "experiment.yaml").read_text(
+            encoding="utf-8"
+        ),
+        encoding="utf-8",
+    )
 
     paths = eda.run_eda(
-        config_path=tmp_path / "experiment.yaml",
+        config_path=config_path,
         processed_path=processed_path,
         feature_path=feature_path,
         contest_split_path=contest_split_path,
@@ -168,5 +175,6 @@ def test_run_eda_writes_required_outputs(tmp_path: Path) -> None:
     assert summary["row_counts"]["processed"] == 4
     assert summary["top_tags"]
     assert summary["solved_count_quantiles"]["p99"] == 985.0
+    assert len(summary["config_fingerprint_sha256"]) == 64
     assert paths["solved_count_hist_log"].is_file()
     assert paths["solved_count_hist_p99"].is_file()
