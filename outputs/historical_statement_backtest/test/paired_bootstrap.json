@@ -1,0 +1,15 @@
+{
+  "cluster_count": 355,
+  "confidence_interval": {
+    "lower": -86.73390763830534,
+    "upper": -65.0783480928314
+  },
+  "confidence_level": 0.95,
+  "method": "paired_contest_cluster_bootstrap",
+  "point_estimate": -75.94472759480388,
+  "quantile_method": "linear",
+  "random_seed": 42,
+  "resamples": 10000,
+  "rng": "numpy_pcg64",
+  "statistic": "primary_mae_minus_comparator_mae"
+}
