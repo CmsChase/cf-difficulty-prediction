@@ -1,2 +1,6 @@
 data/manifests/*.csv text eol=lf
 data/manifests/*.json text eol=lf
+outputs/historical_statement_backtest/**/*.csv text eol=lf
+outputs/historical_statement_backtest/**/*.json text eol=lf
+outputs/historical_statement_backtest/**/*.sha256 text eol=lf
+outputs/historical_statement_backtest/**/*.parquet binary
