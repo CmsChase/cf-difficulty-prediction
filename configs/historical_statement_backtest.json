@@ -1,0 +1,156 @@
+{
+  "schema_version": 1,
+  "study_id": "historical_statement_backtest_v1",
+  "design_status": "frozen_before_rerun",
+  "study_type": "forward_time_retrospective",
+  "evidence_claim": "historical_statement_only_backtest",
+  "random_seed": 42,
+  "target": "rating",
+  "statement_artifact": {
+    "path": "data/raw/codeforces/problem_pages",
+    "representation": "decoded_response_text_reencoded_as_utf8_by_legacy_cache_writer",
+    "integrity": "sha256_of_stored_file_bytes_before_parsing",
+    "provenance_limit": "The legacy cache is not the byte-for-byte HTTP response and does not prove the page state at contest time."
+  },
+  "split": {
+    "unit": "contest_start_time_bucket",
+    "order": [
+      "start_time_seconds_ascending"
+    ],
+    "train_fraction": 0.7,
+    "validation_fraction": 0.1,
+    "test_fraction": 0.2,
+    "boundary_rule": "allocate complete unique start_time_seconds buckets with deterministic largest-remainder counts at 0.70/0.10/0.20; never split equal timestamps",
+    "require_nonempty_partitions": true
+  },
+  "feature_sets": {
+    "comparator": [
+      "index_rank",
+      "index_number"
+    ],
+    "primary": [
+      "index_rank",
+      "index_number",
+      "statement_available",
+      "statement_char_len",
+      "statement_word_count",
+      "statement_line_count",
+      "statement_paragraph_count",
+      "input_section_char_len",
+      "output_section_char_len",
+      "note_section_char_len",
+      "has_input_section",
+      "has_output_section",
+      "has_note_section",
+      "sample_count",
+      "sample_input_output_block_count",
+      "number_count",
+      "integer_count",
+      "float_count",
+      "inequality_symbol_count",
+      "math_symbol_count",
+      "constraint_keyword_count",
+      "big_o_like_count",
+      "uppercase_token_count",
+      "single_letter_variable_count",
+      "latex_like_token_count",
+      "code_like_token_count",
+      "kw_graph",
+      "kw_tree",
+      "kw_array",
+      "kw_string",
+      "kw_dp",
+      "kw_geometry",
+      "kw_greedy",
+      "kw_probability",
+      "kw_interactive",
+      "kw_permutation",
+      "kw_binary",
+      "kw_shortest_path",
+      "kw_query",
+      "time_limit_ms",
+      "memory_limit_mb",
+      "has_time_limit",
+      "has_memory_limit"
+    ]
+  },
+  "feature_policy": {
+    "exact_allowlist_only": true,
+    "identifiers_never_features": [
+      "contest_id",
+      "index"
+    ],
+    "forbidden_as_features": [
+      "rating",
+      "name",
+      "url",
+      "points",
+      "tags",
+      "tag_count",
+      "tag__*",
+      "solved",
+      "solved_count",
+      "accepted",
+      "acceptance",
+      "submission",
+      "submissions",
+      "participant",
+      "participants",
+      "successful_hacks",
+      "unsuccessful_hacks"
+    ]
+  },
+  "model": {
+    "family": "ridge",
+    "alpha_candidates": [
+      0.01,
+      0.1,
+      1.0,
+      10.0,
+      100.0,
+      1000.0
+    ],
+    "numeric_missing_values": "training_partition_median",
+    "numeric_scaling": "training_partition_standard_scaler",
+    "selection_metric": "validation_mae",
+    "selection_scope": "select_alpha_separately_for_each_feature_set",
+    "tie_break": "lowest_alpha",
+    "final_fit": "refit_selected_alpha_on_train_plus_validation"
+  },
+  "test_policy": {
+    "evaluate_once_after_all_selection": true,
+    "primary_metric": "mae",
+    "secondary_metrics": [
+      "rmse",
+      "r2"
+    ],
+    "primary_contrast": "primary_mae_minus_comparator_mae"
+  },
+  "uncertainty": {
+    "method": "paired_contest_cluster_bootstrap",
+    "resamples": 10000,
+    "random_seed": 42,
+    "rng": "numpy_pcg64",
+    "confidence_level": 0.95,
+    "cluster": "contest_id",
+    "statistic": "primary_mae_minus_comparator_mae",
+    "interval": "percentile",
+    "quantile_method": "linear"
+  },
+  "error_analysis": {
+    "model": "primary",
+    "count": 10,
+    "ranking": [
+      "absolute_error_descending",
+      "start_time_seconds_ascending",
+      "contest_id_ascending",
+      "index_ascending"
+    ],
+    "manual_selection": false
+  },
+  "out_of_scope": [
+    "tfidf_or_other_statement_text_models",
+    "post_result_feature_or_alpha_changes",
+    "prospective_or_independently_preregistered_claims"
+  ]
+}

@@ -1,0 +1,88 @@
+{
+  "artifacts": {
+    "prepared_dataset": {
+      "filename": "prepared_dataset.parquet",
+      "sha256": "c0ddcb17841aff6283b9034f29174ceaa54c5123b51a862099df1270e79f7ae7"
+    },
+    "source_manifest": {
+      "filename": "source_manifest.csv",
+      "sha256": "c0fc26c0f4827e8d706af014cd5195d6bef661668bd7dd4be7ae17bfa83c8904"
+    },
+    "split_assignment": {
+      "filename": "split_assignment.parquet",
+      "sha256": "5a745423e78d85c088e846f7b7d4df8b7bcd8a2d5a4e5c3f3b0ecf9e35dd2ad5"
+    },
+    "validation_metrics": {
+      "filename": "validation_metrics.csv",
+      "sha256": "8bb54f389d95602a35491a871877c7bcef69d001d41969e07686bc1866d08849"
+    }
+  },
+  "config_sha256": "c260fff48f31d240c333764930abef050946fd23453a1525e90f0a5d5ab80ed7",
+  "feature_sets": {
+    "comparator": {
+      "columns": [
+        "index_rank",
+        "index_number"
+      ],
+      "selected_alpha": 0.01
+    },
+    "primary": {
+      "columns": [
+        "index_rank",
+        "index_number",
+        "statement_available",
+        "statement_char_len",
+        "statement_word_count",
+        "statement_line_count",
+        "statement_paragraph_count",
+        "input_section_char_len",
+        "output_section_char_len",
+        "note_section_char_len",
+        "has_input_section",
+        "has_output_section",
+        "has_note_section",
+        "sample_count",
+        "sample_input_output_block_count",
+        "number_count",
+        "integer_count",
+        "float_count",
+        "inequality_symbol_count",
+        "math_symbol_count",
+        "constraint_keyword_count",
+        "big_o_like_count",
+        "uppercase_token_count",
+        "single_letter_variable_count",
+        "latex_like_token_count",
+        "code_like_token_count",
+        "kw_graph",
+        "kw_tree",
+        "kw_array",
+        "kw_string",
+        "kw_dp",
+        "kw_geometry",
+        "kw_greedy",
+        "kw_probability",
+        "kw_interactive",
+        "kw_permutation",
+        "kw_binary",
+        "kw_shortest_path",
+        "kw_query",
+        "time_limit_ms",
+        "memory_limit_mb",
+        "has_time_limit",
+        "has_memory_limit"
+      ],
+      "selected_alpha": 0.01
+    }
+  },
+  "inputs": {
+    "cache_manifest_sha256": "c6314ae0297533d6747f85093f11c033fe06f91fec8f1f68f4d72c74485a3df0",
+    "model_table_sha256": "df6d1240316966c6bd1679165df038fed443bebb70b61b975264850e52417259"
+  },
+  "model_family": "ridge",
+  "schema_version": 1,
+  "selection_scope": "validation_only",
+  "study_id": "historical_statement_backtest_v1",
+  "target": "rating",
+  "test_evaluated": false
+}

@@ -7,13 +7,14 @@ metadata, solved statistics, exposure-aware features, and lightweight
 statement-structure features. Historical paper artifacts remain available for
 transparent comparison with the corrected evaluation pipeline.
 
-> **Research status (updated 2026-07-10):** Earlier paper results are retained
+> **Research status (updated 2026-07-12):** Earlier paper results are retained
 > for transparency and should be interpreted as retrospective. A code audit
 > identified a split-configuration mismatch and test-informed model selection;
 > the corrected controls and scope are documented in the
 > [public erratum](docs/ERRATUM_2026-07-10.md).
-> The historical numbers remain available for reference; a full rerun under
-> the corrected configuration has not yet replaced them.
+> No corrected rerun has replaced the legacy full-API headline metrics. A
+> separate locked [historical statement-only backtest](docs/HISTORICAL_STATEMENT_BACKTEST_RESULTS.md)
+> is now reported below.
 
 ![Project overview](docs/project_overview.png)
 
@@ -25,6 +26,7 @@ If you only want the main idea, key results, and how to read the project quickly
 
 Useful companion notes:
 - [Public erratum](docs/ERRATUM_2026-07-10.md)
+- [Historical statement-only backtest results](docs/HISTORICAL_STATEMENT_BACKTEST_RESULTS.md)
 - [Data and artifact manifest](docs/data_manifest.md)
 - [Error analysis](docs/error_analysis.md)
 
@@ -38,6 +40,21 @@ Useful companion notes:
 | Cold-start prediction | metadata only | MAE 318-332 | Legacy descriptive evaluation |
 | Statement-structure extension | metadata + text-light | MAE improves by 33.0-42.3 | Requires future confirmation |
 | Rolling temporal validation | full API + age norm | average MAE 146.0 | Internal temporal analysis, not the future test |
+
+## Locked historical statement-only backtest (retrospective)
+
+A separately frozen forward-time retrospective backtest compared problem-index
+features with the same features plus a fixed statement-structure allowlist. On
+the committed locked test split (2,468 problems from 355 contests), MAE improved from
+**477.2151 to 401.2704**: a difference of **-75.9447** (about 15.9%), with a
+paired contest-cluster bootstrap 95% interval of
+**[-86.7339, -65.0783]**.
+
+This is not a prospective result: pages were collected after their contests,
+the cache is a normalized local representation rather than raw HTTP bytes, and
+the historical data had prior project exposure. It is a separate
+statement-only result and does not replace the legacy full-API headline
+metrics. See the [full results, evidence boundary, and committed result artifacts](docs/HISTORICAL_STATEMENT_BACKTEST_RESULTS.md).
 
 ## Research question
 
@@ -104,7 +121,9 @@ outputs/paper_tables/    Small committed paper-ready CSV tables
 ```
 
 Large generated data, raw API snapshots, cached HTML pages, trained model
-artifacts, logs, and experiment outputs are intentionally not committed.
+artifacts, logs, and most experiment outputs are intentionally not committed.
+The compact locked-backtest evidence listed in the
+[data manifest](docs/data_manifest.md) is committed.
 
 ## Configuration and historical interpretation
 
