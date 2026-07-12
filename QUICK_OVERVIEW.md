@@ -4,8 +4,9 @@
 > A 2026-07-10 code audit identified a split-configuration mismatch and
 > test-informed model selection; see the
 > [public erratum](docs/ERRATUM_2026-07-10.md).
-> The historical numbers remain available for reference; a full rerun under
-> the corrected configuration has not yet replaced them.
+> No corrected rerun has replaced the legacy full-API headline metrics. A
+> separate locked [historical statement-only backtest](docs/HISTORICAL_STATEMENT_BACKTEST_RESULTS.md)
+> is now available.
 
 This project studies a simple question: can Codeforces problem difficulty be predicted from public problem-level information?
 
@@ -31,7 +32,21 @@ The processed model table contains:
 - Official rating range from 800 to 3500
 - 10,906 usable extracted statement-text rows, about 99.3% coverage
 
-Large raw API snapshots, cached HTML pages, logs, and generated experiment outputs are not committed. See [`docs/data_manifest.md`](docs/data_manifest.md) for details.
+Large raw API snapshots, cached HTML pages, logs, and most generated experiment
+outputs are not committed. Compact locked-backtest evidence is committed; see
+[`docs/data_manifest.md`](docs/data_manifest.md) for details.
+
+## New locked statement-only result (retrospective)
+
+A frozen forward-time historical backtest compared index features with index +
+statement-structure features on 2,468 test problems from 355 contests. Test MAE
+improved from **477.2151 to 401.2704**, a difference of **-75.9447** (about
+15.9%); the paired contest-cluster bootstrap 95% interval was
+**[-86.7339, -65.0783]**.
+
+This result is not prospective and does not replace the old full-API headline
+metrics. The pages were collected after their contests, and the historical data
+had prior project exposure. See the [full result and committed result artifacts](docs/HISTORICAL_STATEMENT_BACKTEST_RESULTS.md).
 
 ## Historical results (retrospective)
 
@@ -63,11 +78,12 @@ TF-IDF alone is weak. Its value is mainly as an extra signal combined with metad
 Recommended order:
 
 1. [`docs/ERRATUM_2026-07-10.md`](docs/ERRATUM_2026-07-10.md) for the governance correction.
-2. [`README.md`](README.md) for the project overview and corrected pipeline.
-3. [`paper/paper_v5_full_en_final.pdf`](paper/paper_v5_full_en_final.pdf) for the historical full study.
-4. [`paper/paper_v6_semantic_tfidf_final.pdf`](paper/paper_v6_semantic_tfidf_final.pdf) for the historical TF-IDF experiment.
-5. [`docs/error_analysis.md`](docs/error_analysis.md) for model failure patterns.
-6. [`docs/data_manifest.md`](docs/data_manifest.md) for data and artifact limitations.
+2. [`docs/HISTORICAL_STATEMENT_BACKTEST_RESULTS.md`](docs/HISTORICAL_STATEMENT_BACKTEST_RESULTS.md) for the locked statement-only result.
+3. [`README.md`](README.md) for the project overview and corrected pipeline.
+4. [`paper/paper_v5_full_en_final.pdf`](paper/paper_v5_full_en_final.pdf) for the historical full study.
+5. [`paper/paper_v6_semantic_tfidf_final.pdf`](paper/paper_v6_semantic_tfidf_final.pdf) for the historical TF-IDF experiment.
+6. [`docs/error_analysis.md`](docs/error_analysis.md) for model failure patterns.
+7. [`docs/data_manifest.md`](docs/data_manifest.md) for data and artifact limitations.
 
 ## What the project does not claim
 

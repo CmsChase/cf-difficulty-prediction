@@ -137,6 +137,38 @@
         </article>
       </section>
 
+      <section id="backtest" class="section">
+        <div class="section-heading">
+          <p class="section-kicker">2026-07-12 locked result</p>
+          <h2>Historical statement-only backtest</h2>
+          <p class="section-note">
+            In a forward-time retrospective test, adding the frozen
+            statement-structure features improved over the index-only
+            comparator. This is not prospective and does not replace the old
+            full-API headline metrics. The pages were collected after their
+            contests; see the
+            <a href="https://github.com/CmsChase/cf-difficulty-prediction/blob/main/docs/HISTORICAL_STATEMENT_BACKTEST_RESULTS.md">full result and evidence boundary</a>.
+          </p>
+        </div>
+        <div class="result-grid">
+          <article class="result-card wide">
+            <p>Index-only comparator</p>
+            <strong>MAE 477.2</strong>
+            <span>2,468 test problems</span>
+          </article>
+          <article class="result-card wide accent">
+            <p>Index + statement structure</p>
+            <strong>MAE 401.3</strong>
+            <span>about 15.9% lower</span>
+          </article>
+          <article class="result-card accent">
+            <p>Paired MAE difference</p>
+            <strong>-75.9</strong>
+            <span>95% cluster-bootstrap CI [-86.7, -65.1]</span>
+          </article>
+        </div>
+      </section>
+
       <section id="results" class="section">
         <div class="section-heading">
           <p class="section-kicker">Key results</p>
