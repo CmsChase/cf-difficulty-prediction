@@ -12,6 +12,8 @@ transparent comparison with the corrected evaluation pipeline.
 > identified a split-configuration mismatch and test-informed model selection;
 > the corrected controls and scope are documented in the
 > [public erratum](docs/ERRATUM_2026-07-10.md).
+> The historical numbers remain available for reference; a full rerun under
+> the corrected configuration has not yet replaced them.
 
 ![Project overview](docs/project_overview.png)
 

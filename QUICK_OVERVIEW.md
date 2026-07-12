@@ -4,6 +4,8 @@
 > A 2026-07-10 code audit identified a split-configuration mismatch and
 > test-informed model selection; see the
 > [public erratum](docs/ERRATUM_2026-07-10.md).
+> The historical numbers remain available for reference; a full rerun under
+> the corrected configuration has not yet replaced them.
 
 This project studies a simple question: can Codeforces problem difficulty be predicted from public problem-level information?
 
