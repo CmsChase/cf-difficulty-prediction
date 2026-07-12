@@ -1,0 +1,13 @@
+{
+  "content_semantics": "current normalized cache content, not original HTTP response bytes",
+  "entry_count": 10979,
+  "kind_counts": {
+    "empty": 2,
+    "html": 10906,
+    "other": 0,
+    "pdf": 71
+  },
+  "manifest_sha256": "c6314ae0297533d6747f85093f11c033fe06f91fec8f1f68f4d72c74485a3df0",
+  "schema_version": 1,
+  "total_bytes": 718348870
+}

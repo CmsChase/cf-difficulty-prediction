@@ -1,0 +1,2 @@
+data/manifests/*.csv text eol=lf
+data/manifests/*.json text eol=lf

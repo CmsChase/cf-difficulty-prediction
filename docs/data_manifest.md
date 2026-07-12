@@ -65,6 +65,25 @@ the old split ratios; using it with current code is an audit aid, not a complete
 paper-reproduction recipe. Exact historical reproduction also requires the
 matching Git tag and original local snapshot.
 
+## Historical statement backtest cache seal
+
+The statement-only backtest uses the local cache state sealed on 2026-07-12.
+The committed [file manifest](../data/manifests/historical_statement_cache_v1.csv)
+contains a relative path, stored-byte SHA-256 digest, size, filesystem mtime,
+and conservative content classification for each of 10,979 entries. Its
+[summary](../data/manifests/historical_statement_cache_v1_summary.json) records:
+
+- 10,906 HTML entries, 71 PDF responses, and 2 empty files;
+- 718,348,870 stored bytes in total;
+- manifest SHA-256
+  `c6314ae0297533d6747f85093f11c033fe06f91fec8f1f68f4d72c74485a3df0`.
+
+These digests seal the current local representation only. The legacy cache
+writer decoded response text and re-encoded it as UTF-8, so these are not hashes
+of the original HTTP response bytes. Filesystem mtimes are recorded as local
+provenance metadata but do not independently prove capture time or contest-time
+page state.
+
 ## Reviewer interpretation
 
 This manifest exists to make the artifact situation explicit. It documents which
