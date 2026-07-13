@@ -188,11 +188,14 @@ The extractor resumes from cached pages, so closing and restarting the process
 does not discard already downloaded problem pages. The raw HTML cache and
 generated statement feature outputs remain local artifacts.
 
-## Browser demo note
+## Project website
 
-The GitHub Pages site includes an illustrative browser-side demo for intuition.
-It is heuristic, does not run trained research models, and is not part of the
-reported experiments.
+The [GitHub Pages site](https://cmschase.github.io/cf-difficulty-prediction/)
+is an evidence-first guide to the current study. Its interactive evidence
+explorer traces the frozen question, chronological split, validation-only
+selection, locked test result, uncertainty calculation, and committed result
+artifacts. It does not load a trained model or present a heuristic prediction
+as an experimental result.
 
 ## Semantic TF-IDF extension
 

@@ -3,104 +3,135 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Codeforces Difficulty Prediction</title>
+    <title>CF Difficulty — Locked Evidence</title>
     <meta
       name="description"
-      content="A reproducible ML study of Codeforces post-publication and cold-start problem difficulty prediction."
+      content="An auditable Codeforces difficulty study with a public erratum, a frozen retrospective protocol, validation-only selection, row-level predictions, and hashed result artifacts."
     />
-    <link rel="stylesheet" href="style.css" />
+    <meta name="theme-color" content="#050506" />
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="CF Difficulty · Evidence" />
+    <meta property="og:title" content="CF Difficulty — Locked Evidence" />
+    <meta
+      property="og:description"
+      content="How much difficulty signal is in problem-statement structure? Explore the frozen protocol, locked historical result, uncertainty, and audit trail."
+    />
+    <meta name="twitter:title" content="CF Difficulty — Locked Evidence" />
+    <meta
+      name="twitter:description"
+      content="A frozen retrospective comparison with traceable result artifacts."
+    />
+    <link rel="stylesheet" href="style.css?v=20260713" />
   </head>
   <body>
     <div class="page-glow" aria-hidden="true"></div>
 
     <header class="site-header" id="top">
       <nav class="nav" aria-label="Project navigation">
-        <a class="brand" href="#top" aria-label="Codeforces Difficulty Prediction home">
-          <span class="brand-mark"></span>
-          <span>CF Difficulty</span>
+        <a class="brand" href="#top" aria-label="CF Difficulty evidence home">
+          <span class="brand-mark" aria-hidden="true"></span>
+          <span>CF Difficulty · Evidence</span>
         </a>
         <div class="nav-links">
-          <a href="#results">Results</a>
-          <a href="#figures">Figures</a>
-          <a href="#v6-semantic">v6</a>
-          <a href="#demo">Demo</a>
-          <a href="#limitations">Limits</a>
-          <a href="https://github.com/CmsChase/cf-difficulty-prediction/blob/main/docs/ERRATUM_2026-07-10.md">Erratum</a>
-          <span class="nav-divider"></span>
-          <a href="../README.md">README</a>
-          <a class="nav-pill" href="../paper/paper_v5_full_en_final.pdf">Paper</a>
+          <a href="#result">Result</a>
+          <a href="#protocol">Protocol</a>
+          <a href="#explorer">Evidence</a>
+          <a href="#boundaries">Boundaries</a>
+          <a href="#archive">Archive</a>
+          <a
+            href="https://github.com/CmsChase/cf-difficulty-prediction/blob/main/docs/ERRATUM_2026-07-10.md"
+          >Erratum</a>
+          <span class="nav-divider" aria-hidden="true"></span>
+          <a
+            class="nav-pill"
+            href="https://github.com/CmsChase/cf-difficulty-prediction"
+          >GitHub</a>
         </div>
       </nav>
     </header>
 
     <main>
-      <section class="question" aria-label="Research governance notice">
-        <p class="section-kicker">Research status · updated 2026-07-10</p>
-        <h2>Historical metrics are retrospective, not confirmatory.</h2>
+      <section class="status-banner" aria-label="Current research status">
+        <div>
+          <p class="section-kicker">Current evidence · 12 July 2026</p>
+          <h2>The headline result is a locked historical backtest.</h2>
+        </div>
         <p>
-          A code audit identified a split-configuration mismatch and
-          test-informed model selection. The historical artifacts remain
-          available for transparency; read the
-          <a href="https://github.com/CmsChase/cf-difficulty-prediction/blob/main/docs/ERRATUM_2026-07-10.md">public erratum</a>
-          for the corrected scope and controls.
+          It is retrospective—not a future blind test. Earlier papers remain
+          public as an audit trail and are governed by the
+          <a
+            href="https://github.com/CmsChase/cf-difficulty-prediction/blob/main/docs/ERRATUM_2026-07-10.md"
+          >public erratum</a>.
         </p>
       </section>
+
       <section class="hero">
         <div class="hero-copy">
-          <p class="eyebrow">Historical study · corrected evaluation pipeline</p>
-          <h1>Codeforces Difficulty Prediction</h1>
+          <p class="eyebrow">Frozen question · traceable result artifacts</p>
+          <h1>How much difficulty signal is in problem-statement structure?</h1>
           <p class="subtitle">
-            A reproducible ML study of post-publication and cold-start problem
-            difficulty prediction.
+            After excluding rating, solved counts, tags, points, and other
+            strong signals from the model inputs, this study asks whether 41
+            fixed statement-structure features improve forward-time rating
+            prediction beyond two problem-index features alone.
           </p>
+          <div class="status-chips" aria-label="Study attributes">
+            <span>Retrospective study</span>
+            <span>Rerun protocol frozen before test evaluation</span>
+            <span>Auditable outputs</span>
+          </div>
           <div class="button-row" aria-label="Primary project links">
-            <a class="button primary" href="https://github.com/CmsChase/cf-difficulty-prediction">
-              GitHub repository
-            </a>
-            <a class="button" href="../paper/paper_v5_full_en_final.pdf">Historical paper PDF</a>
-            <a class="button" href="../QUICK_OVERVIEW.md">Quick overview</a>
-            <a class="button" href="../README.md">README</a>
+            <a
+              class="button primary"
+              href="https://github.com/CmsChase/cf-difficulty-prediction/blob/main/docs/HISTORICAL_STATEMENT_BACKTEST_RESULTS.md"
+            >Read the full result</a>
+            <a
+              class="button"
+              href="https://github.com/CmsChase/cf-difficulty-prediction/blob/main/docs/HISTORICAL_STATEMENT_BACKTEST.md"
+            >Inspect the frozen protocol</a>
+            <a class="button" href="#explorer">Explore the evidence</a>
           </div>
         </div>
 
-        <aside class="research-window" aria-label="Research pipeline preview">
+        <aside class="research-window" aria-label="Locked result summary">
           <div class="window-top">
             <span class="dot"></span>
             <span class="dot"></span>
             <span class="dot"></span>
-            <span class="window-title">evaluation overview</span>
+            <span class="window-title">locked comparison · test cohort</span>
           </div>
           <div class="window-body">
             <div class="sidebar">
-              <span class="sidebar-title">Signals</span>
-              <span class="side-item active">metadata</span>
-              <span class="side-item">solved stats</span>
-              <span class="side-item">text-light</span>
-              <span class="side-item">temporal splits</span>
+              <span class="sidebar-title">Evidence trail</span>
+              <span class="side-item">01 · protocol</span>
+              <span class="side-item">02 · validation</span>
+              <span class="side-item">03 · selection lock</span>
+              <span class="side-item active">04 · final test</span>
+              <span class="side-item">05 · hashes</span>
             </div>
             <div class="issue-card">
               <div class="issue-head">
-                <span>CFD-10979</span>
-                <span class="status">legacy · see erratum</span>
+                <span>TEST-2468</span>
+                <span class="status">committed · locked</span>
               </div>
-              <h2>Predict rating before the leaderboard tells the whole story.</h2>
+              <h2>Statement structure improved over the index-only comparator.</h2>
               <p>
-                Public API metadata, post-publication solved behavior, and v5
-                statement structure features are evaluated under grouped and
-                chronological splits.
+                Both Ridge models selected alpha 0.01 using validation MAE
+                only, then were refit on train plus validation before the final
+                historical test.
               </p>
               <div class="mini-metrics">
                 <div>
-                  <strong>166.9</strong>
-                  <span>contest MAE</span>
+                  <strong>477.2 → 401.3</strong>
+                  <span>test MAE</span>
                 </div>
                 <div>
-                  <strong>152.5</strong>
-                  <span>time MAE</span>
+                  <strong>−75.9</strong>
+                  <span>rating-point difference</span>
                 </div>
                 <div>
-                  <strong>99.3%</strong>
-                  <span>text coverage</span>
+                  <strong>[−86.7, −65.1]</strong>
+                  <span>95% cluster-bootstrap interval</span>
                 </div>
               </div>
             </div>
@@ -109,336 +140,482 @@
       </section>
 
       <section class="question">
-        <p class="section-kicker">Research question</p>
+        <p class="section-kicker">The narrow claim</p>
         <h2>
-          How well can Codeforces problem difficulty be predicted across
-          post-publication and cold-start settings using public metadata,
-          solved-count statistics, exposure-aware features, and lightweight
-          problem-statement structure features?
+          In this historical cohort and under the frozen comparison,
+          statement structure contains predictive signal beyond problem-index
+          position. The result does not establish prospective performance.
         </h2>
       </section>
 
-      <section class="dataset-strip" aria-label="Dataset summary">
+      <section class="dataset-strip" aria-label="Study cohort summary">
         <article>
           <span class="stat">10,979</span>
-          <span>rated programming problems</span>
+          <span>rated historical problems</span>
         </article>
         <article>
-          <span class="stat">1,948</span>
-          <span>contests</span>
+          <span class="stat">7,375 / 1,136 / 2,468</span>
+          <span>train / validation / test rows</span>
         </article>
         <article>
-          <span class="stat">800–3500</span>
-          <span>rating range</span>
+          <span class="stat">355</span>
+          <span>contests in the test cohort</span>
         </article>
         <article>
-          <span class="stat">API + pages</span>
-          <span>public Codeforces sources</span>
+          <span class="stat">98.14%</span>
+          <span>parsed-statement coverage in test</span>
         </article>
       </section>
 
-      <section id="backtest" class="section">
+      <section id="result" class="section">
         <div class="section-heading">
-          <p class="section-kicker">2026-07-12 locked result</p>
-          <h2>Historical statement-only backtest</h2>
+          <p class="section-kicker">Locked forward-time result</p>
+          <h2>One comparison, reported with its uncertainty.</h2>
           <p class="section-note">
-            In a forward-time retrospective test, adding the frozen
-            statement-structure features improved over the index-only
-            comparator. This is not prospective and does not replace the old
-            full-API headline metrics. The pages were collected after their
-            contests; see the
-            <a href="https://github.com/CmsChase/cf-difficulty-prediction/blob/main/docs/HISTORICAL_STATEMENT_BACKTEST_RESULTS.md">full result and evidence boundary</a>.
+            The 15.9% reduction is relative only to the predeclared index-only
+            comparator. It is not a claim of improvement over the legacy
+            full-API model or the state of the art.
           </p>
         </div>
         <div class="result-grid">
           <article class="result-card wide">
             <p>Index-only comparator</p>
-            <strong>MAE 477.2</strong>
-            <span>2,468 test problems</span>
+            <strong>MAE 477.2151</strong>
+            <span>index_rank + index_number</span>
           </article>
           <article class="result-card wide accent">
             <p>Index + statement structure</p>
-            <strong>MAE 401.3</strong>
-            <span>about 15.9% lower</span>
+            <strong>MAE 401.2704</strong>
+            <span>the same 2 features + 41 frozen features</span>
           </article>
           <article class="result-card accent">
-            <p>Paired MAE difference</p>
-            <strong>-75.9</strong>
-            <span>95% cluster-bootstrap CI [-86.7, -65.1]</span>
-          </article>
-        </div>
-      </section>
-
-      <section id="results" class="section">
-        <div class="section-heading">
-          <p class="section-kicker">Key results</p>
-          <h2>Post-publication is strong. Cold-start is the hard part.</h2>
-        </div>
-        <div class="result-grid">
-          <article class="result-card wide">
-            <p>Contest-grouped full API</p>
-            <strong>MAE 166.9</strong>
-            <span>within ±200 = 69.7%</span>
-          </article>
-          <article class="result-card wide">
-            <p>Forward-time full API</p>
-            <strong>MAE 152.5</strong>
-            <span>within ±200 = 71.2%</span>
+            <p>Primary contrast</p>
+            <strong>−75.9447</strong>
+            <span>primary MAE − comparator MAE</span>
           </article>
           <article class="result-card">
-            <p>Cold-start metadata only</p>
-            <strong>317.1 / 331.4</strong>
-            <span>MAE</span>
+            <p>Relative reduction</p>
+            <strong>15.9%</strong>
+            <span>against the index-only comparator</span>
           </article>
           <article class="result-card">
-            <p>Metadata + text-light</p>
-            <strong>284.0 / 289.1</strong>
-            <span>MAE</span>
+            <p>RMSE</p>
+            <strong>575.4 → 503.3</strong>
+            <span>secondary metric</span>
           </article>
-          <article class="result-card accent">
-            <p>Statement text-light improvement</p>
-            <strong>33.0–42.3</strong>
-            <span>MAE</span>
+          <article class="result-card">
+            <p>R-squared</p>
+            <strong>0.5005 → 0.6179</strong>
+            <span>secondary metric</span>
           </article>
-          <article class="result-card accent">
-            <p>Statement feature coverage</p>
-            <strong>99.3%</strong>
-            <span>10,906 / 10,979 parsed</span>
-          </article>
+        </div>
+        <div class="interval-card" aria-label="Bootstrap interval explanation">
+          <div>
+            <span class="interval-label">Paired contest-cluster bootstrap</span>
+            <strong>95% interval [−86.7339, −65.0783]</strong>
+          </div>
+          <p>
+            10,000 paired resamples across 355 test contests, using the frozen
+            PCG64 seed 42. The interval describes uncertainty in this locked
+            historical cohort; it does not guarantee a future effect.
+          </p>
         </div>
       </section>
 
-      <section id="figures" class="section">
+      <section id="protocol" class="section">
         <div class="section-heading">
-          <p class="section-kicker">Figures</p>
-          <h2>Five views of the final v5 pipeline.</h2>
+          <p class="section-kicker">Research design</p>
+          <h2>Controls were fixed before this rerun's final test evaluation.</h2>
+          <p class="section-note">
+            The repository records the question, split, exact feature
+            allowlists, selection rule, test policy, uncertainty method, and
+            automatic error-analysis rule.
+          </p>
         </div>
-        <div class="figure-wall">
-          <figure class="figure-large">
-            <img src="project_overview.png" alt="Project overview diagram" />
-            <figcaption>Pipeline from public Codeforces data to analysis and paper artifacts.</figcaption>
-          </figure>
-          <figure>
-            <img src="figures/test_mae_by_model.png" alt="Test MAE by model" />
-            <figcaption>Model comparison across saved evaluation strategies.</figcaption>
-          </figure>
-          <figure>
-            <img src="figures/feature_drop_mae_change.png" alt="Feature ablation MAE change" />
-            <figcaption>Ablation view of which signal groups matter most.</figcaption>
-          </figure>
-          <figure>
-            <img
-              src="figures/statement_cold_start_mae_comparison.png"
-              alt="Statement cold-start MAE comparison"
-            />
-            <figcaption>v5 statement text-light cold-start comparison.</figcaption>
-          </figure>
-          <figure>
-            <img src="figures/rolling_window_mae.png" alt="Rolling-window MAE" />
-            <figcaption>Rolling chronological validation for temporal robustness.</figcaption>
-          </figure>
+        <div class="protocol-grid">
+          <article class="protocol-card">
+            <span>01</span>
+            <h3>Freeze the question</h3>
+            <p>
+              Compare two index features against the same two features plus 41
+              named statement-structure features. Unexpected inputs fail the
+              run instead of entering silently.
+            </p>
+          </article>
+          <article class="protocol-card">
+            <span>02</span>
+            <h3>Split forward in time</h3>
+            <p>
+              Complete contest start-time buckets are ordered chronologically
+              and allocated 70/10/20. Shared timestamps never cross a boundary.
+            </p>
+          </article>
+          <article class="protocol-card">
+            <span>03</span>
+            <h3>Select on validation only</h3>
+            <p>
+              Alpha is chosen separately for each Ridge model using validation
+              MAE. Both selected 0.01; test metrics do not choose the model.
+            </p>
+          </article>
+          <article class="protocol-card">
+            <span>04</span>
+            <h3>Seal before testing</h3>
+            <p>
+              Configuration, split membership, prepared data, validation
+              metrics, feature lists, and their SHA-256 digests are captured in
+              the selection lock.
+            </p>
+          </article>
+          <article class="protocol-card">
+            <span>05</span>
+            <h3>Test and preserve</h3>
+            <p>
+              The policy allows one final evaluation after selection. Git
+              records one committed locked result with row-level predictions,
+              bootstrap output, Top-10 errors, and a result hash manifest.
+            </p>
+          </article>
         </div>
       </section>
 
-      <section class="section compare">
+      <section id="explorer" class="section explorer-section">
+        <div class="section-heading">
+          <p class="section-kicker">Interactive evidence explorer</p>
+          <h2>Inspect what was decided, measured, and preserved.</h2>
+          <p class="section-note">
+            This replaces the old heuristic difficulty slider. It presents the
+            real locked study and never pretends to run a trained model in the
+            browser.
+          </p>
+        </div>
+        <div class="evidence-shell">
+          <div class="evidence-tabs" role="tablist" aria-label="Evidence views">
+            <button
+              class="evidence-tab active"
+              id="tab-question"
+              type="button"
+              role="tab"
+              aria-selected="true"
+              aria-controls="evidence-panel"
+              data-evidence="question"
+            >Question</button>
+            <button
+              class="evidence-tab"
+              id="tab-split"
+              type="button"
+              role="tab"
+              aria-selected="false"
+              aria-controls="evidence-panel"
+              tabindex="-1"
+              data-evidence="split"
+            >Split</button>
+            <button
+              class="evidence-tab"
+              id="tab-selection"
+              type="button"
+              role="tab"
+              aria-selected="false"
+              aria-controls="evidence-panel"
+              tabindex="-1"
+              data-evidence="selection"
+            >Selection</button>
+            <button
+              class="evidence-tab"
+              id="tab-test"
+              type="button"
+              role="tab"
+              aria-selected="false"
+              aria-controls="evidence-panel"
+              tabindex="-1"
+              data-evidence="test"
+            >Test</button>
+            <button
+              class="evidence-tab"
+              id="tab-uncertainty"
+              type="button"
+              role="tab"
+              aria-selected="false"
+              aria-controls="evidence-panel"
+              tabindex="-1"
+              data-evidence="uncertainty"
+            >Uncertainty</button>
+            <button
+              class="evidence-tab"
+              id="tab-artifacts"
+              type="button"
+              role="tab"
+              aria-selected="false"
+              aria-controls="evidence-panel"
+              tabindex="-1"
+              data-evidence="artifacts"
+            >Artifacts</button>
+          </div>
+          <article
+            class="evidence-panel"
+            id="evidence-panel"
+            role="tabpanel"
+            aria-live="polite"
+            aria-labelledby="tab-question"
+          >
+            <p class="output-label" id="evidenceKicker">FROZEN COMPARISON</p>
+            <h3 id="evidenceTitle">Does statement structure add signal beyond index?</h3>
+            <p class="evidence-metric" id="evidenceMetric">2 features vs 43 features</p>
+            <p id="evidenceDetail">
+              The comparator sees index_rank and index_number. The primary
+              model adds 41 fixed statement-structure features.
+            </p>
+            <p class="evidence-boundary" id="evidenceBoundary">
+              Rating is the target, not an input. Ratings, solved counts, tags,
+              points, and participation signals are forbidden from both input
+              matrices.
+            </p>
+            <a
+              class="button evidence-link"
+              id="evidenceLink"
+              href="https://github.com/CmsChase/cf-difficulty-prediction/blob/main/configs/historical_statement_backtest.json"
+            >Open the frozen configuration</a>
+          </article>
+        </div>
+        <noscript>
+          <p class="noscript-note">
+            JavaScript is disabled. The complete evidence remains available in
+            the full results document linked above.
+          </p>
+        </noscript>
+      </section>
+
+      <section class="section" id="trail">
+        <div class="section-heading">
+          <p class="section-kicker">Audit trail</p>
+          <h2>Every headline number has a trail.</h2>
+          <p class="section-note">
+            The compact committed artifacts are enough to recompute selection
+            and final metrics from the prepared data. The original 718 MB page
+            cache is not committed, so HTML-to-feature extraction is not fully
+            reproducible from this repository alone.
+          </p>
+        </div>
+        <div class="artifact-grid">
+          <a
+            class="artifact-card"
+            href="https://github.com/CmsChase/cf-difficulty-prediction/blob/main/docs/ERRATUM_2026-07-10.md"
+          >
+            <span>01 · governance</span>
+            <strong>Public erratum</strong>
+            <p>What was wrong in the historical evaluation and how claims changed.</p>
+          </a>
+          <a
+            class="artifact-card"
+            href="https://github.com/CmsChase/cf-difficulty-prediction/blob/main/docs/HISTORICAL_STATEMENT_BACKTEST.md"
+          >
+            <span>02 · design</span>
+            <strong>Frozen protocol</strong>
+            <p>The exact question, split, models, metric, test policy, and non-claims.</p>
+          </a>
+          <a
+            class="artifact-card"
+            href="https://github.com/CmsChase/cf-difficulty-prediction/blob/main/outputs/historical_statement_backtest/selection/selection_lock.json"
+          >
+            <span>03 · before test</span>
+            <strong>Selection lock</strong>
+            <p>Selected alphas, feature lists, input hashes, and test_evaluated: false.</p>
+          </a>
+          <a
+            class="artifact-card"
+            href="https://github.com/CmsChase/cf-difficulty-prediction/blob/main/outputs/historical_statement_backtest/test/test_metrics.json"
+          >
+            <span>04 · result</span>
+            <strong>Final test metrics</strong>
+            <p>Machine-readable MAE, RMSE, R-squared, and the primary contrast.</p>
+          </a>
+          <a
+            class="artifact-card"
+            href="https://github.com/CmsChase/cf-difficulty-prediction/blob/main/outputs/historical_statement_backtest/test/test_predictions.csv"
+          >
+            <span>05 · row level</span>
+            <strong>Test predictions</strong>
+            <p>Predictions and errors for all 2,468 locked test problems.</p>
+          </a>
+          <a
+            class="artifact-card"
+            href="https://github.com/CmsChase/cf-difficulty-prediction/blob/main/outputs/historical_statement_backtest/test/result_manifest.sha256"
+          >
+            <span>06 · integrity</span>
+            <strong>Result hashes</strong>
+            <p>SHA-256 manifest for the final committed result files.</p>
+          </a>
+        </div>
+      </section>
+
+      <section id="failure-modes" class="section compare failure-section">
         <div>
-          <p class="section-kicker">Interpretation</p>
-          <h2>Full API is not the same problem as cold-start.</h2>
+          <p class="section-kicker">Automatic Top-10 error analysis</p>
+          <h2>The largest errors suggest likely failure modes.</h2>
+          <p class="section-note">
+            The ten examples were selected automatically by absolute error; no
+            case was manually substituted after viewing the test.
+          </p>
         </div>
         <div class="compare-grid">
           <article class="compare-card">
-            <span>01</span>
-            <h3>Post-publication</h3>
+            <span>01 · contest format</span>
+            <h3>ICPC letters are identifiers</h3>
             <p>
-              Full API uses solved-count statistics after problems have had time
-              to accumulate accepted submissions. It is powerful, but it also
-              reflects exposure, age, popularity, and participation.
+              Manual post-hoc inspection found that all ten largest errors were
+              overpredictions on ICPC-style problems. A likely explanation is
+              that, unlike typical Codeforces rounds, their letters are
+              identifiers rather than a difficulty order.
             </p>
           </article>
           <article class="compare-card">
-            <span>02</span>
-            <h3>Cold-start</h3>
+            <span>02 · extrapolation</span>
+            <h3>Ridge predictions were not clipped</h3>
             <p>
-              Cold-start excludes solved-count behavior. This v5 site reports
-              metadata/statement cold-start, not strict pre-contest cold-start,
-              because official tags may not always be available before contests.
+              An unusual index and statement-feature combination can produce a
+              prediction outside the observed 800–3500 rating range. Changing
+              this after test would invalidate the locked comparison.
+            </p>
+          </article>
+          <article class="compare-card">
+            <span>03 · parsing</span>
+            <h3>One page was a PDF</h3>
+            <p>
+              Problem 2073/L returned a PDF rather than parsable HTML, so its
+              statement features followed the frozen missing-page policy.
+            </p>
+          </article>
+          <article class="compare-card">
+            <span>04 · next experiment</span>
+            <h3>Fixes belong in a new protocol</h3>
+            <p>
+              Contest-type interactions, revised index encoding, or clipping
+              may be useful hypotheses, but none can be retrofitted into the
+              result already opened and reported.
             </p>
           </article>
         </div>
       </section>
 
-      <section id="v6-semantic" class="section v6-section">
+      <section id="boundaries" class="section boundaries-section">
         <div class="section-heading">
-          <p class="section-kicker">v6 Semantic Statement Text Modeling</p>
-          <h2>Classical TF-IDF adds semantic cold-start signal, but does not replace v5.</h2>
-          <p class="section-note">
-            v6 is a separate semantic statement-text extension. It tests whether
-            normalized problem-statement text, represented with TF-IDF, improves
-            cold-start prediction beyond metadata and v5 lightweight
-            statement-structure features.
-          </p>
+          <p class="section-kicker">Evidence boundary</p>
+          <h2>Strong traceability, deliberately conservative claims.</h2>
         </div>
-        <div class="cli-demo-grid">
-          <article class="cli-copy">
-            <p>
-              The v6 extension uses classical bag-of-words TF-IDF, not BERT,
-              transformers, embeddings, LLMs, or deep semantic understanding.
-              TF-IDF alone is weak, but metadata + TF-IDF improves over metadata
-              only, and metadata + text-light + TF-IDF improves over metadata +
-              text-light.
-            </p>
-            <p>
-              The improvement is larger on forward-time validation than on
-              contest-grouped validation. This remains metadata/statement
-              cold-start rather than strict pre-contest prediction, because tags
-              may be post-contest metadata. The v6 full_api_reference is a
-              ridge-based internal comparison and does not replace the canonical
-              v5 full API benchmark.
-            </p>
-            <div class="inline-links">
-              <a href="../paper/paper_v6_semantic_tfidf.md">v6 paper Markdown</a>
-              <a href="../paper/paper_v6_semantic_tfidf_final.pdf">v6 paper PDF</a>
-            </div>
+        <div class="claims-grid">
+          <article class="claim-card supports">
+            <p class="claim-label">The evidence supports</p>
+            <ul>
+              <li>Statement structure added signal beyond the frozen index-only comparator.</li>
+              <li>Candidate alphas were selected using validation MAE only.</li>
+              <li>Committed prepared data can recompute selection and final metrics.</li>
+              <li>Historical evaluation problems and corrections are publicly documented.</li>
+            </ul>
           </article>
-          <div class="result-grid v6-result-grid">
-            <article class="result-card">
-              <p>Contest metadata + TF-IDF</p>
-              <strong>340.5 -> 311.1</strong>
-              <span>MAE vs metadata only</span>
-            </article>
-            <article class="result-card">
-              <p>Forward metadata + TF-IDF</p>
-              <strong>365.4 -> 325.4</strong>
-              <span>MAE vs metadata only</span>
-            </article>
-            <article class="result-card accent">
-              <p>Contest text-light + TF-IDF</p>
-              <strong>310.6 -> 298.5</strong>
-              <span>MAE improvement</span>
-            </article>
-            <article class="result-card accent">
-              <p>Forward text-light + TF-IDF</p>
-              <strong>335.8 -> 316.2</strong>
-              <span>MAE improvement</span>
-            </article>
-          </div>
+          <article class="claim-card does-not">
+            <p class="claim-label">The evidence does not establish</p>
+            <ul>
+              <li>Prospective, independently preregistered, or strict pre-contest performance.</li>
+              <li>Understanding of algorithms, proofs, or intrinsic problem difficulty.</li>
+              <li>Improvement over the legacy full-API model, a state-of-the-art method, or another platform.</li>
+              <li>The page state at contest time or end-to-end extraction without the local cache.</li>
+            </ul>
+          </article>
         </div>
-        <div class="figure-wall v6-figures">
-          <figure>
-            <img
-              src="../paper/figures/v6_semantic_mae_comparison.png"
-              alt="v6 semantic TF-IDF MAE comparison"
-            />
-            <figcaption>v6 MAE comparison across metadata, text-light, TF-IDF, and combined settings.</figcaption>
-          </figure>
-          <figure>
-            <img
-              src="../paper/figures/v6_semantic_improvement_comparison.png"
-              alt="v6 semantic TF-IDF improvement comparison"
-            />
-            <figcaption>Absolute MAE improvements from adding TF-IDF statement text features.</figcaption>
-          </figure>
-        </div>
+        <aside class="provenance-note">
+          <strong>Why this is not an independent preregistration:</strong>
+          <p>
+            Earlier project work had already examined these historical contests
+            and related data. The freeze limits new analytical discretion for
+            this rerun; it does not make the cohort independently unseen. The
+            problem pages were collected after their contests, and the sealed
+            cache stores response text decoded and re-encoded as UTF-8 rather
+            than raw byte-for-byte HTTP responses.
+          </p>
+        </aside>
       </section>
 
-      <section id="demo" class="section demo-section">
+      <section id="archive" class="section archive-section">
         <div class="section-heading">
-          <p class="section-kicker">Illustrative browser demo only</p>
-          <h2>Heuristic sliders for intuition, not the trained research models.</h2>
+          <p class="section-kicker">Historical exploration archive</p>
+          <h2>Earlier results are context, not the current headline.</h2>
           <p class="section-note">
-            This browser demo is heuristic and does not run the trained research
-            models. It is an explanatory aid only and is not part of the reported
-            experiments.
+            These experiments motivated the present question, but the old
+            split configuration and test-informed selection issues mean their
+            metrics are retained as retrospective, hypothesis-generating work.
           </p>
         </div>
-        <div class="demo-shell">
-          <form class="demo-form" aria-label="Illustrative difficulty demo controls">
-            <label>
-              Contest index rank
-              <select id="indexRank">
-                <option value="A">A</option>
-                <option value="B">B</option>
-                <option value="C" selected>C</option>
-                <option value="D">D</option>
-                <option value="E">E</option>
-                <option value="F+">F+</option>
-              </select>
-            </label>
-            <label>
-              Tag family
-              <select id="tagFamily">
-                <option value="implementation">implementation</option>
-                <option value="math">math</option>
-                <option value="dp">dp</option>
-                <option value="graphs">graphs</option>
-                <option value="greedy" selected>greedy</option>
-                <option value="strings">strings</option>
-                <option value="interactive">interactive</option>
-                <option value="geometry">geometry</option>
-              </select>
-            </label>
-            <label>
-              Statement length
-              <select id="statementLength">
-                <option value="short">short</option>
-                <option value="medium" selected>medium</option>
-                <option value="long">long</option>
-              </select>
-            </label>
-            <label>
-              Solved-count available
-              <select id="solvedAvailable">
-                <option value="no" selected>no</option>
-                <option value="yes">yes</option>
-              </select>
-            </label>
-          </form>
-          <aside class="demo-output" aria-live="polite">
-            <p class="output-label">Predicted difficulty range</p>
-            <p id="difficultyRange" class="output-range">1500–1900</p>
-            <p id="scenarioType" class="scenario">Cold-start scenario</p>
-            <p id="demoExplanation">
-              Uses index rank, tag family, and statement length. Solved-count
-              behavior is not included.
+        <div class="archive-grid">
+          <article class="archive-card">
+            <span>Post-publication full API</span>
+            <strong>166.9 / 152.5 MAE</strong>
+            <p>
+              Legacy contest-grouped and forward-time headline metrics. Solved
+              count is powerful but reflects exposure and participation as well
+              as difficulty.
             </p>
-          </aside>
+          </article>
+          <article class="archive-card">
+            <span>Statement structure</span>
+            <strong>33.0–42.3 MAE lower</strong>
+            <p>
+              Historical metadata-plus-structure comparisons that motivated
+              the narrower locked statement-only backtest.
+            </p>
+          </article>
+          <article class="archive-card">
+            <span>Classical TF-IDF</span>
+            <strong>Exploratory text signal</strong>
+            <p>
+              Bag-of-words statement text added signal in legacy evaluations;
+              it is not deep semantic understanding and was out of scope for
+              the locked backtest.
+            </p>
+          </article>
+        </div>
+        <div class="button-row">
+          <a
+            class="button"
+            href="https://github.com/CmsChase/cf-difficulty-prediction/blob/main/QUICK_OVERVIEW.md"
+          >Historical overview</a>
+          <a
+            class="button"
+            href="https://github.com/CmsChase/cf-difficulty-prediction/blob/main/paper/paper_v5_full_en_final.pdf"
+          >v5 historical paper</a>
+          <a
+            class="button"
+            href="https://github.com/CmsChase/cf-difficulty-prediction/blob/main/paper/paper_v6_semantic_tfidf_final.pdf"
+          >v6 TF-IDF paper</a>
         </div>
       </section>
 
-      <section id="limitations" class="section limits-section">
-        <div class="section-heading">
-          <p class="section-kicker">Limitations</p>
-          <h2>Good numbers, conservative claims.</h2>
-        </div>
-        <ul class="limits">
-          <li>Solved count is not pure difficulty; it is shaped by exposure and time.</li>
-          <li>Statement text-light features are approximate HTML-derived structure features.</li>
-          <li>No deep NLP, semantic embeddings, or LLM-based statement understanding in v5.</li>
-          <li>v6 TF-IDF is classical bag-of-words text modeling, not deep algorithmic understanding.</li>
-          <li>v6 is metadata/statement cold-start and does not replace the historical v5 benchmark.</li>
-          <li>The evaluation is Codeforces-only.</li>
-          <li>Cold-start prediction remains harder than post-publication prediction.</li>
-        </ul>
+      <section class="section next-section">
+        <p class="section-kicker">What comes next</p>
+        <h2>A genuinely future cohort is the next evidence step—not a result already claimed.</h2>
+        <p>
+          The next protocol should freeze eligibility, capture timing, feature
+          availability, missing-data rules, model selection, and the test-opening
+          policy before new contest outcomes are observed. Until that happens,
+          this site labels every current metric as historical.
+        </p>
       </section>
 
       <section class="section links-section">
-        <p class="section-kicker">Links</p>
+        <p class="section-kicker">Project records</p>
         <div class="link-grid">
-          <a href="https://github.com/CmsChase/cf-difficulty-prediction">GitHub repo root</a>
-          <a href="../README.md">README.md</a>
-          <a href="../QUICK_OVERVIEW.md">QUICK_OVERVIEW.md</a>
-          <a href="../paper/paper_v5_full_en_final.pdf">paper_v5_full_en_final.pdf</a>
-          <a href="../paper/paper_v5_full_en.md">paper_v5_full_en.md</a>
-          <a href="../paper/paper_v6_semantic_tfidf_final.pdf">paper_v6_semantic_tfidf_final.pdf</a>
-          <a href="../paper/paper_v6_semantic_tfidf.md">paper_v6_semantic_tfidf.md</a>
+          <a href="https://github.com/CmsChase/cf-difficulty-prediction">Repository</a>
+          <a href="https://github.com/CmsChase/cf-difficulty-prediction/blob/main/README.md">README</a>
+          <a href="https://github.com/CmsChase/cf-difficulty-prediction/blob/main/docs/data_manifest.md">Data manifest</a>
+          <a href="https://github.com/CmsChase/cf-difficulty-prediction/blob/main/docs/error_analysis.md">Error analysis</a>
+          <a href="https://github.com/CmsChase/cf-difficulty-prediction/tree/main/tests">Tests</a>
         </div>
       </section>
     </main>
 
     <footer>
-      Static project site. No model files are loaded in the browser.
+      Static evidence site. No trained model or hidden dataset is loaded in the browser.
     </footer>
 
-    <script src="demo.js"></script>
+    <script src="evidence.js?v=20260713"></script>
   </body>
 </html>
