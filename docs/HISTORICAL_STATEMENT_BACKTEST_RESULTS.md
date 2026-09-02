@@ -143,6 +143,11 @@ specified future experiment.
 
 ## Committed result artifacts
 
+The committed prepared-data-to-result path can be checked without overwriting
+these artifacts by running `python -m cf_diff.verify_locked_backtest` from the
+repository root after setting `PYTHONPATH=src`. The verifier does not recreate
+HTML-derived features because the page cache is not committed.
+
 - [Selection lock](../outputs/historical_statement_backtest/selection/selection_lock.json)
   and its [SHA-256 file](../outputs/historical_statement_backtest/selection/selection_lock.sha256)
 - [Validation metrics](../outputs/historical_statement_backtest/selection/validation_metrics.csv)

@@ -352,7 +352,12 @@ def prepare_text_column(frame: pd.DataFrame, text_column: str) -> pd.DataFrame:
         output[text_column] = ""
     output[text_column] = output[text_column].fillna("").astype(str)
     if "statement_text_available" in output.columns:
-        output["statement_text_available"] = output["statement_text_available"].fillna(False)
+        output["statement_text_available"] = (
+            output["statement_text_available"]
+            .astype("boolean")
+            .fillna(False)
+            .astype(bool)
+        )
     else:
         output["statement_text_available"] = output[text_column].str.strip().ne("")
     return output

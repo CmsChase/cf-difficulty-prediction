@@ -10,7 +10,17 @@ on:
 
 jobs:
   test:
-    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        os:
+          - ubuntu-latest
+          - windows-latest
+
+    runs-on: ${{ matrix.os }}
+
+    env:
+      PYTHONPATH: src
 
     steps:
       - name: Check out repository
@@ -28,4 +38,7 @@ jobs:
         run: node --check docs/evidence.js
 
       - name: Run tests
-        run: PYTHONPATH=src python -m pytest -q
+        run: python -m pytest -q
+
+      - name: Verify committed locked result
+        run: python -m cf_diff.verify_locked_backtest

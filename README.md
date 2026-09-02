@@ -56,6 +56,21 @@ the historical data had prior project exposure. It is a separate
 statement-only result and does not replace the legacy full-API headline
 metrics. See the [full results, evidence boundary, and committed result artifacts](docs/HISTORICAL_STATEMENT_BACKTEST_RESULTS.md).
 
+### Verify the committed locked result
+
+After completing the setup below, run this command from the repository root:
+
+```powershell
+python -m cf_diff.verify_locked_backtest
+```
+
+The verifier checks every file named by the committed final-result SHA-256
+manifest, verifies the sealed selection artifacts, and recomputes the four
+reported test artifacts from the committed prepared dataset in a temporary
+directory. It does not overwrite the locked evidence. This verifies the
+committed prepared-data-to-result path; it does not reconstruct statement
+features from the uncommitted page cache.
+
 ## Research question
 
 How well can Codeforces problem difficulty be predicted across
@@ -238,8 +253,10 @@ Compact historical results:
 python -m pytest -q
 ```
 
-The CI badge above and the command output are the source of truth for the
-current test count.
+Pytest is configured to collect only the repository's `tests/` directory, so
+ignored local experiment outputs are not scanned. CI runs the suite and the
+locked-result verifier on both Windows and Linux. The CI badge above and the
+command output are the source of truth for the current test count.
 
 ## Notes on interpretation
 

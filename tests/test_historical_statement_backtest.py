@@ -18,6 +18,19 @@ from cf_diff.statement_features import STATEMENT_FEATURE_COLUMNS
 CONFIG_PATH = Path("configs/historical_statement_backtest.json")
 
 
+def test_frozen_config_bytes_match_the_committed_selection_lock() -> None:
+    config_bytes = CONFIG_PATH.read_bytes()
+    lock = json.loads(
+        (
+            Path("outputs/historical_statement_backtest/selection")
+            / backtest.SELECTION_LOCK_FILENAME
+        ).read_text(encoding="utf-8")
+    )
+
+    assert b"\r\n" not in config_bytes
+    assert hashlib.sha256(config_bytes).hexdigest() == lock["config_sha256"]
+
+
 def _copy_config(tmp_path: Path) -> Path:
     path = tmp_path / "historical_statement_backtest.json"
     path.write_bytes(CONFIG_PATH.read_bytes())
